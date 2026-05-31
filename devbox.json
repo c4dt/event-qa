@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.2/.schema/devbox.schema.json",
+  "packages": [
+    "nodejs@22",
+    "pnpm@10",
+    "sqlite@latest"
+  ],
+  "shell": {
+    "init_hook": [
+      "echo \"event-qa devbox shell ready (node $(node -v), pnpm $(pnpm -v))\""
+    ],
+    "scripts": {
+      "install": "pnpm install",
+      "dev": "pnpm dev",
+      "test": "pnpm -r test",
+      "lint": "pnpm -r lint",
+      "build": "pnpm -r build"
+    }
+  }
+}

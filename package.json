@@ -1,0 +1,24 @@
+{
+  "name": "event-qa",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Self-hosted Q&A and discussion companion for events and conferences.",
+  "license": "AGPL-3.0-or-later",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:watch": "pnpm -r test:watch",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write \"**/*.{ts,svelte,js,json,md,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{ts,svelte,js,json,md,yaml,yml}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "prettier-plugin-svelte": "^3.2.6"
+  }
+}
