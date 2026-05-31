@@ -8,7 +8,7 @@
     "event-qa": "./dist/cli.js"
   },
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "EVENT_CONFIG=../data/event.yaml DB_PATH=../data/event-qa.db tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "test": "vitest run",

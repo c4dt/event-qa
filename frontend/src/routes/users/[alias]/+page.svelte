@@ -53,10 +53,10 @@
       <p class="mt-1 text-lg text-gray-700 dark:text-gray-300">{user.name}</p>
     {/if}
     {#if user.affiliation}
-      <p class="text-sm text-gray-500">{user.affiliation}</p>
+      <p class="text-sm text-gray-500"><span class="font-medium">Affiliation:</span> {user.affiliation}</p>
     {/if}
     {#if user.bio}
-      <p class="mt-2 text-gray-700 dark:text-gray-300">{user.bio}</p>
+      <p class="mt-2 text-gray-700 dark:text-gray-300"><span class="font-medium">Bio:</span> {user.bio}</p>
     {/if}
 
     {#if $auth.status === 'authed' && user.alias === $auth.user.alias}

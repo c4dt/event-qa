@@ -132,13 +132,15 @@
             {q.answered ? 'border-green-300 dark:border-green-700' : ''}">
             <button
               type="button"
-              class="relative z-10 flex min-h-[3rem] min-w-[3rem] flex-col items-center justify-center rounded px-3 py-2 text-sm
-                {q.user_voted ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}"
+              class="relative z-10 flex min-h-[3rem] min-w-[3rem] flex-col items-center justify-center rounded border px-3 py-2 text-sm font-semibold transition-colors
+                {q.user_voted
+                  ? 'border-blue-500 bg-blue-50 text-blue-600 dark:border-blue-400 dark:bg-blue-900/30 dark:text-blue-400'
+                  : 'border-gray-200 bg-white text-gray-400 hover:border-blue-400 hover:text-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-blue-500 dark:hover:text-blue-400'}"
               on:click|stopPropagation={() => toggleUpvote(q)}
               title={q.user_voted ? 'Remove upvote' : 'Upvote'}
             >
-              ▲
-              <span>{q.vote_count}</span>
+              <span class="text-base leading-none">▲</span>
+              <span class="text-xs tabular-nums">{q.vote_count}</span>
             </button>
             <a href={`/questions/${q.id}`} class="absolute inset-0 z-0" aria-label={q.title}></a>
             <div class="relative z-10 flex-1 pointer-events-none">

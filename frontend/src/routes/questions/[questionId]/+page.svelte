@@ -24,6 +24,8 @@
 
   $: myAlias = $auth.status === 'authed' ? $auth.user.alias : null;
 
+  $: if (replyInput) replyInput.focus();
+
   function userHref(alias: string): string {
     return myAlias === alias ? '/profile' : `/users/${alias}`;
   }
@@ -48,22 +50,20 @@
     if (!newBody.trim() || !question) return;
     posting = true;
     try {
-      const { message } = await api.createMessage(question.id, newBody.trim());
-      messages = [...messages, message];
+      await api.createMessage(question.id, newBody.trim());
       newBody = '';
-      await tick();
-      scrollToBottom();
-      replyInput?.focus();
     } catch (err) {
       error = (err as Error).message;
     } finally {
       posting = false;
     }
+    await tick();
+    replyInput?.focus();
   }
 
   function scrollToBottom() {
     if (messageList) {
-      messageList.scrollTop = messageList.scrollHeight;
+      requestAnimationFrame(() => { messageList.scrollTop = messageList.scrollHeight; });
     }
   }
 
@@ -82,6 +82,7 @@
           if (question) question = { ...question, message_count: question.message_count + 1 };
           await tick();
           scrollToBottom();
+          replyInput?.focus();
         }
       } else if (ev.type === 'question.update' && ev.question.id === questionId) {
         question = ev.question;

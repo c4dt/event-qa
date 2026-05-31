@@ -33,17 +33,15 @@
     if (!newBody.trim()) return;
     posting = true;
     try {
-      const { message } = await api.sendDm(alias, newBody.trim());
-      messages = [...messages, message];
+      await api.sendDm(alias, newBody.trim());
       newBody = '';
-      await tick();
-      listEl?.scrollTo({ top: listEl.scrollHeight });
-      inputEl?.focus();
     } catch (err) {
       error = (err as Error).message;
     } finally {
       posting = false;
     }
+    await tick();
+    inputEl?.focus();
   }
 
   let removeHandler: (() => void) | null = null;
