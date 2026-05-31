@@ -146,8 +146,11 @@
               {#if q.answered}
                 <span class="ml-2 rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-700 dark:bg-green-900 dark:text-green-300">answered</span>
               {/if}
-              <div class="text-xs text-gray-500 mt-0.5">
-                by <a href={`/users/${q.author_alias}`} class="hover:underline pointer-events-auto">{q.author_alias}</a>
+              <div class="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+                <span>by <a href={`/users/${q.author_alias}`} class="hover:underline pointer-events-auto">{q.author_alias}</a></span>
+                {#if q.message_count > 0}
+                  <span title="replies">💬 {q.message_count}</span>
+                {/if}
               </div>
             </div>
 

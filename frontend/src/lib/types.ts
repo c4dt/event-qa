@@ -1,5 +1,4 @@
-// Mirrors the public shapes returned by the backend (see backend/src/config.ts
-// and backend/src/auth.ts). Keep in sync by hand for v1.
+// Mirrors the public shapes returned by the backend. Keep in sync by hand for v1.
 
 export type PublicUser = {
   id: number;
@@ -8,6 +7,11 @@ export type PublicUser = {
   affiliation: string | null;
   bio: string | null;
   is_admin: boolean;
+};
+
+export type UserWithActivity = PublicUser & {
+  last_seen: number | null;
+  question_count?: number;
 };
 
 export type EventMeta = {
@@ -37,6 +41,38 @@ export type Talk = {
 export type Track = { id: string; name: string; talks: Talk[] };
 export type Schedule = { rooms: Room[]; speakers: Speaker[]; tracks: Track[] };
 
+export type Question = {
+  id: number;
+  talk_id: string;
+  author_id: number;
+  author_alias: string;
+  title: string;
+  created_at: number;
+  hidden: number;
+  answered: number;
+  vote_count: number;
+  user_voted: number;
+  message_count: number;
+};
+
+export type QuestionMessage = {
+  id: number;
+  question_id: number;
+  author_id: number;
+  author_alias: string;
+  body: string;
+  created_at: number;
+  hidden: number;
+};
+
+export type DmMessage = {
+  id: number;
+  sender_id: number;
+  sender_alias: string;
+  body: string;
+  created_at: number;
+};
+
 export type LoginInput = {
   alias: string;
   password?: string;
@@ -46,3 +82,8 @@ export type LoginInput = {
 };
 
 export type ApiError = { error: string; issues?: unknown };
+
+export type UnreadCounts = {
+  dms: Record<string, number>;
+  questions: Record<string, number>;
+};

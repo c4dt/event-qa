@@ -14,6 +14,7 @@
   let posting = false;
   let error: string | null = null;
   let listEl: HTMLUListElement;
+  let inputEl: HTMLInputElement;
 
   async function load() {
     try {
@@ -37,6 +38,7 @@
       newBody = '';
       await tick();
       listEl?.scrollTo({ top: listEl.scrollHeight });
+      inputEl?.focus();
     } catch (err) {
       error = (err as Error).message;
     } finally {
@@ -56,6 +58,7 @@
           unread.clearDm(alias);
           await tick();
           listEl?.scrollTo({ top: listEl.scrollHeight });
+          inputEl?.focus();
         }
       }
     });
@@ -109,6 +112,7 @@
   {#if $auth.status === 'authed'}
     <form class="flex gap-2" on:submit|preventDefault={send}>
       <input
+        bind:this={inputEl}
         bind:value={newBody}
         placeholder="Message…"
         class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"

@@ -50,6 +50,7 @@
       if (ev.type === 'question.message' && ev.questionId === questionId) {
         if (!messages.find((m) => m.id === ev.message.id)) {
           messages = [...messages, ev.message];
+          if (question) question = { ...question, message_count: question.message_count + 1 };
         }
       } else if (ev.type === 'question.update' && ev.question.id === questionId) {
         question = ev.question;
