@@ -7,7 +7,7 @@
   import { addWsHandler } from '$lib/ws.js';
   import type { DmMessage } from '$lib/types.js';
 
-  $: alias = $page.params.alias;
+  $: alias = $page.params.alias ?? '';
 
   let messages: DmMessage[] = [];
   let newBody = '';

@@ -8,6 +8,7 @@
 </script>
 
 <div class="markdown">
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
   {@html html}
 </div>
 

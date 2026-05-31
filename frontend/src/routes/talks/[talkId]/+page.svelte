@@ -7,7 +7,7 @@
   import { addWsHandler, subscribeChannel, unsubscribeChannel } from '$lib/ws.js';
   import type { Question, Schedule, Talk, Speaker } from '$lib/types.js';
 
-  $: talkId = $page.params.talkId;
+  $: talkId = $page.params.talkId ?? '';
 
   let schedule: Schedule | null = null;
   let questions: Question[] = [];

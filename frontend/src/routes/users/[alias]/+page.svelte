@@ -6,7 +6,7 @@
   import type { UserWithActivity, Question } from '$lib/types.js';
   import Markdown from '$lib/components/Markdown.svelte';
 
-  $: alias = $page.params.alias;
+  $: alias = $page.params.alias ?? '';
 
   let user: UserWithActivity | null = null;
   let questions: Question[] = [];

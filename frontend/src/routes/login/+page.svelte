@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { auth } from '$lib/stores/auth.js';
   import { ApiCallError, getStoredAlias } from '$lib/api.js';
@@ -11,6 +12,11 @@
   let showExtras = false;
   let error: string | null = null;
   let submitting = false;
+  let aliasInput: HTMLInputElement | undefined;
+
+  onMount(() => {
+    aliasInput?.focus();
+  });
 
   async function submit() {
     error = null;
@@ -58,7 +64,7 @@
         type="text"
         required
         autocomplete="username"
-        autofocus
+        bind:this={aliasInput}
         bind:value={alias}
         class="mt-1 block w-full rounded border border-gray-300 bg-white px-2 py-1 dark:border-gray-600 dark:bg-gray-800"
       />

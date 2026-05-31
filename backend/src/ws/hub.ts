@@ -13,6 +13,15 @@ const HEARTBEAT_INTERVAL_MS = 20_000;
 const IDLE_PING_AFTER_MS = 30_000;
 const IDLE_KILL_AFTER_MS = 40_000;
 
+// Channels a client may subscribe/unsubscribe to over the wire.
+// Per-user channels (dm:<id>, user:<id>) are added server-side at auth time
+// so users cannot snoop on other users' streams.
+const CLIENT_SUBSCRIBABLE = /^(talk|question):[A-Za-z0-9_-]+$/;
+
+function isClientSubscribable(channel: string): boolean {
+  return CLIENT_SUBSCRIBABLE.test(channel);
+}
+
 export function attachWsHub(server: Server, ctx: AppCtx): WebSocketServer {
   const wss = new WebSocketServer({ server, path: '/ws' });
 
@@ -42,9 +51,13 @@ export function attachWsHub(server: Server, ctx: AppCtx): WebSocketServer {
       }
       if (!socket.userId) return;
       if (msg.type === 'subscribe' && typeof msg.channel === 'string') {
-        socket.channels!.add(msg.channel);
+        if (isClientSubscribable(msg.channel)) {
+          socket.channels!.add(msg.channel);
+        }
       } else if (msg.type === 'unsubscribe' && typeof msg.channel === 'string') {
-        socket.channels!.delete(msg.channel);
+        if (isClientSubscribable(msg.channel)) {
+          socket.channels!.delete(msg.channel);
+        }
       }
     });
 
