@@ -17,6 +17,14 @@
   let error: string | null = null;
   let replyInput: HTMLInputElement;
   let messageList: HTMLElement;
+  let moreAbove = false;
+  let moreBelow = false;
+
+  function updateScrollIndicators() {
+    if (!messageList) return;
+    moreAbove = messageList.scrollTop > 4;
+    moreBelow = messageList.scrollTop + messageList.clientHeight < messageList.scrollHeight - 4;
+  }
 
   $: talkTitle = (schedule && question)
     ? (schedule.tracks.flatMap((tr) => tr.talks).find((t) => t.id === question!.talk_id)?.title ?? question.talk_id)
@@ -63,7 +71,10 @@
 
   function scrollToBottom() {
     if (messageList) {
-      requestAnimationFrame(() => { messageList.scrollTop = messageList.scrollHeight; });
+      requestAnimationFrame(() => {
+        messageList.scrollTop = messageList.scrollHeight;
+        updateScrollIndicators();
+      });
     }
   }
 
@@ -78,10 +89,14 @@
     removeHandler = addWsHandler(async (ev) => {
       if (ev.type === 'question.message' && ev.questionId === questionId) {
         if (!messages.find((m) => m.id === ev.message.id)) {
+          const atBottom = messageList
+            ? messageList.scrollTop + messageList.clientHeight >= messageList.scrollHeight - 8
+            : true;
           messages = [...messages, ev.message];
           if (question) question = { ...question, message_count: question.message_count + 1 };
           await tick();
-          scrollToBottom();
+          if (atBottom) scrollToBottom();
+          else updateScrollIndicators();
           replyInput?.focus();
         }
       } else if (ev.type === 'question.update' && ev.question.id === questionId) {
@@ -134,32 +149,56 @@
     </div>
 
     <!-- Scrollable messages area -->
-    <div bind:this={messageList} class="min-h-0 flex-1 overflow-y-auto">
-      {#if messages.length === 0}
-        <p class="mb-4 text-sm text-gray-500">No replies yet.</p>
-      {:else}
-        <ul class="space-y-2 pb-2">
-          {#each messages as msg (msg.id)}
-            <li class="rounded border border-gray-100 p-3 dark:border-gray-800">
-              <div class="text-sm">{msg.body}</div>
-              <div class="mt-1 flex items-center gap-2 text-xs text-gray-400">
-                <a href={userHref(msg.author_alias)} class="hover:underline">{msg.author_alias}</a>
-                <span>·</span>
-                <span>{fmtTime(msg.created_at)}</span>
-                {#if $auth.status === 'authed' && $auth.user.is_admin}
-                  <button
-                    type="button"
-                    class="ml-2 text-red-500 hover:underline"
-                    on:click={async () => {
-                      await api.adminHideMessage(msg.id);
-                      messages = messages.filter((m) => m.id !== msg.id);
-                    }}
-                  >hide</button>
-                {/if}
-              </div>
-            </li>
-          {/each}
-        </ul>
+    <div class="relative min-h-0 flex-1">
+      <div
+        bind:this={messageList}
+        on:scroll={updateScrollIndicators}
+        class="h-full overflow-y-auto"
+      >
+        {#if messages.length === 0}
+          <p class="mb-4 text-sm text-gray-500">No replies yet.</p>
+        {:else}
+          <ul class="space-y-2 pb-2">
+            {#each messages as msg (msg.id)}
+              <li class="rounded border border-gray-100 p-3 dark:border-gray-800">
+                <div class="text-sm">{msg.body}</div>
+                <div class="mt-1 flex items-center gap-2 text-xs text-gray-400">
+                  <a href={userHref(msg.author_alias)} class="hover:underline">{msg.author_alias}</a>
+                  <span>·</span>
+                  <span>{fmtTime(msg.created_at)}</span>
+                  {#if $auth.status === 'authed' && $auth.user.is_admin}
+                    <button
+                      type="button"
+                      class="ml-2 text-red-500 hover:underline"
+                      on:click={async () => {
+                        await api.adminHideMessage(msg.id);
+                        messages = messages.filter((m) => m.id !== msg.id);
+                      }}
+                    >hide</button>
+                  {/if}
+                </div>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+      {#if moreAbove}
+        <button
+          type="button"
+          on:click={() => messageList && (messageList.scrollTop = 0)}
+          class="pointer-events-auto absolute left-1/2 top-1 z-10 -translate-x-1/2 rounded-full bg-gray-700/80 px-2 py-0.5 text-xs text-white shadow hover:bg-gray-700"
+          title="Scroll to top"
+        >↑ more above</button>
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-white to-transparent dark:from-gray-900"></div>
+      {/if}
+      {#if moreBelow}
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-white to-transparent dark:from-gray-900"></div>
+        <button
+          type="button"
+          on:click={scrollToBottom}
+          class="pointer-events-auto absolute left-1/2 bottom-1 z-10 -translate-x-1/2 rounded-full bg-gray-700/80 px-2 py-0.5 text-xs text-white shadow hover:bg-gray-700"
+          title="Scroll to bottom"
+        >↓ more below</button>
       {/if}
     </div>
 

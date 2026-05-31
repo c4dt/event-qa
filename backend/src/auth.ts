@@ -22,6 +22,7 @@ export type PublicUser = {
   affiliation: string | null;
   bio: string | null;
   is_admin: boolean;
+  banned: boolean;
 };
 
 export type LoginInput = {
@@ -51,6 +52,7 @@ export function toPublicUser(row: Pick<UserRow, 'id' | 'alias' | 'name' | 'affil
     affiliation: row.affiliation,
     bio: row.bio,
     is_admin: row.banned === 0 && row.is_admin === 1,
+    banned: row.banned === 1,
   };
 }
 

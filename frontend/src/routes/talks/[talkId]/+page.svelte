@@ -75,7 +75,10 @@
   });
 
   function sortedQuestions(qs: Question[]) {
-    return [...qs].sort((a, b) => b.vote_count - a.vote_count || a.created_at - b.created_at);
+    return [...qs].sort((a, b) => {
+      if (a.answered !== b.answered) return a.answered - b.answered;
+      return b.vote_count - a.vote_count || a.created_at - b.created_at;
+    });
   }
 </script>
 

@@ -1,5 +1,15 @@
 # 2026-05-31
 
+- questions/* - make it more clear for a long list that there are more messages above or below
+- questions - when the admin clicks "answered", the message should go to the bottom of the pile
+- users - keep the 'ban'ned users visible for admins, and add an 'unban' button next to the user
+
+- in the users page, sort the users first by active users (green dot), then alphabetically.
+
+- in the users tab, do the following:
+  - always show the display name and the affiliation
+  - do not show the bio
+  - make the box of the users clickable also on the text
 - when writing a message on a question, after pressing on "Reply", the 
 message box is cleared, and the focus is in the message box
 - in breadcrumb, "Schedule > Talk > Question", the "Talk" should be replaced with the actual talk

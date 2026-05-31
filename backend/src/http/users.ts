@@ -6,8 +6,11 @@ export const usersRouter: Router = Router();
 usersRouter.use(requireAuth);
 
 // GET /api/users — list with counts + last_seen
+// Admins also see banned users (so they can unban them).
 usersRouter.get('/', (req, res) => {
   const { db } = req.ctx!;
+  const isAdmin = req.user?.is_admin === 1;
+  const whereClause = isAdmin ? '' : 'WHERE u.banned = 0';
   const rows = db
     .prepare<[], {
       id: number; alias: string; name: string | null; affiliation: string | null;
@@ -20,7 +23,7 @@ usersRouter.get('/', (req, res) => {
        FROM users u
        LEFT JOIN sessions s ON s.user_id = u.id
        LEFT JOIN questions q ON q.author_id = u.id AND q.hidden = 0
-       WHERE u.banned = 0
+       ${whereClause}
        GROUP BY u.id
        ORDER BY u.alias ASC`,
     )

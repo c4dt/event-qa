@@ -7,6 +7,7 @@ export type PublicUser = {
   affiliation: string | null;
   bio: string | null;
   is_admin: boolean;
+  banned: boolean;
 };
 
 export type UserWithActivity = PublicUser & {
