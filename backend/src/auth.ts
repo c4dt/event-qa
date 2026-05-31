@@ -43,7 +43,7 @@ export function makeToken(): string {
   return randomBytes(32).toString('base64url');
 }
 
-export function toPublicUser(row: UserRow): PublicUser {
+export function toPublicUser(row: Pick<UserRow, 'id' | 'alias' | 'name' | 'affiliation' | 'bio' | 'banned' | 'is_admin'>): PublicUser {
   return {
     id: row.id,
     alias: row.alias,

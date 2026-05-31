@@ -1,16 +1,18 @@
 import { existsSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import express, { type Express, type Request, type Response } from 'express';
+import type { WebSocketServer } from 'ws';
 import { attachCtx, type AppCtx } from './http/context.js';
 import { authRouter, meRouter } from './http/auth.js';
 import { eventRouter } from './http/schedule.js';
 import { usersRouter } from './http/users.js';
-import { talksRouter, questionsRouter } from './http/questions.js';
-import { dmsRouter, unreadRouter } from './http/dms.js';
-import { adminRouter } from './http/admin.js';
+import { makeQuestionsRouters } from './http/questions.js';
+import { makeDmsRouters } from './http/dms.js';
+import { makeAdminRouter } from './http/admin.js';
 
 export type AppOptions = {
   staticDir?: string | null;
+  wss?: WebSocketServer;
 };
 
 export function createApp(ctx: AppCtx, opts: AppOptions = {}): Express {
@@ -21,6 +23,10 @@ export function createApp(ctx: AppCtx, opts: AppOptions = {}): Express {
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true });
   });
+
+  const { talksRouter, questionsRouter } = makeQuestionsRouters(opts.wss);
+  const { dmsRouter, unreadRouter } = makeDmsRouters(opts.wss);
+  const adminRouter = makeAdminRouter(opts.wss);
 
   app.use('/api/auth', authRouter);
   app.use('/api/me', meRouter);

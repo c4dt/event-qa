@@ -1,18 +1,23 @@
-// WebSocket client stub. The realtime hub is fully wired on the
-// backend but the frontend slice does not yet subscribe to events;
-// this module exposes the connect() function so future work can
-// dispatch into stores from a single place.
 import { writable } from 'svelte/store';
+import type { Question, QuestionMessage, DmMessage, PublicUser } from './types.js';
 
 export type WsEvent =
-  | { type: 'question.new'; talkId: string; question: unknown }
-  | { type: 'question.update'; question: unknown }
-  | { type: 'question.message'; questionId: number; message: unknown }
-  | { type: 'dm.new'; peerAlias: string; message: unknown }
-  | { type: 'user.update'; user: unknown }
+  | { type: 'question.new'; talkId: string; question: Question }
+  | { type: 'question.update'; question: Question }
+  | { type: 'question.message'; questionId: number; message: QuestionMessage }
+  | { type: 'dm.new'; peerAlias: string; message: DmMessage }
+  | { type: 'user.update'; user: PublicUser }
   | { type: 'presence'; alias: string; online: boolean };
 
 export const connected = writable(false);
+
+// Handlers that feature modules can register
+const handlers = new Set<(ev: WsEvent) => void>();
+
+export function addWsHandler(fn: (ev: WsEvent) => void): () => void {
+  handlers.add(fn);
+  return () => handlers.delete(fn);
+}
 
 let socket: WebSocket | null = null;
 
@@ -24,12 +29,28 @@ export function connectWs(token: string): WebSocket {
     ws.send(JSON.stringify({ type: 'auth', token }));
     connected.set(true);
   });
+  ws.addEventListener('message', (ev) => {
+    try {
+      const data = JSON.parse(ev.data as string) as WsEvent;
+      for (const h of handlers) h(data);
+    } catch {
+      // ignore malformed
+    }
+  });
   ws.addEventListener('close', () => {
     connected.set(false);
     socket = null;
   });
   socket = ws;
   return ws;
+}
+
+export function subscribeChannel(channel: string): void {
+  socket?.send(JSON.stringify({ type: 'subscribe', channel }));
+}
+
+export function unsubscribeChannel(channel: string): void {
+  socket?.send(JSON.stringify({ type: 'unsubscribe', channel }));
 }
 
 export function disconnectWs(): void {

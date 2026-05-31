@@ -14,7 +14,19 @@ export default [
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     },
   },
-  ...svelte.configs['flat/recommended'],
+  ...svelte.configs['flat/recommended'].map((cfg) => {
+    if (!cfg.files?.some((f) => String(f).includes('.svelte'))) return cfg;
+    return {
+      ...cfg,
+      languageOptions: {
+        ...cfg.languageOptions,
+        parserOptions: {
+          ...(cfg.languageOptions?.parserOptions ?? {}),
+          parser: tsparser,
+        },
+      },
+    };
+  }),
   {
     ignores: ['.svelte-kit/**', 'build/**', 'node_modules/**'],
   },

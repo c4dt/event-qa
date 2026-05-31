@@ -24,9 +24,10 @@ async function main(): Promise<void> {
   const ratelimit = new RateLimiter(cfg.ratelimit.posts_per_minute);
 
   const staticDir = env('STATIC_DIR', '/app/frontend/build');
-  const app = createApp({ db, cfg, auth, ratelimit }, { staticDir });
-  const server = createServer(app);
-  attachWsHub(server, { db, cfg, auth, ratelimit });
+  const server = createServer();
+  const wss = attachWsHub(server, { db, cfg, auth, ratelimit });
+  const app = createApp({ db, cfg, auth, ratelimit }, { staticDir, wss });
+  server.on('request', app);
 
   server.listen(port, () => {
     log.info({ port }, 'event-qa listening');
