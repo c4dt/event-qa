@@ -20,9 +20,13 @@ export function addWsHandler(fn: (ev: WsEvent) => void): () => void {
 }
 
 let socket: WebSocket | null = null;
+let authed = false;
+// Channels subscribed before auth.ok — flushed once auth is confirmed
+const pendingSubscriptions = new Set<string>();
 
 export function connectWs(token: string): WebSocket {
   if (socket && socket.readyState <= WebSocket.OPEN) return socket;
+  authed = false;
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const ws = new WebSocket(`${proto}//${location.host}/ws`);
   ws.addEventListener('open', () => {
@@ -31,14 +35,23 @@ export function connectWs(token: string): WebSocket {
   });
   ws.addEventListener('message', (ev) => {
     try {
-      const data = JSON.parse(ev.data as string) as WsEvent;
-      for (const h of handlers) h(data);
+      const raw = JSON.parse(ev.data as string) as { type: string };
+      if (raw.type === 'auth.ok') {
+        authed = true;
+        for (const ch of pendingSubscriptions) {
+          ws.send(JSON.stringify({ type: 'subscribe', channel: ch }));
+        }
+        pendingSubscriptions.clear();
+        return;
+      }
+      for (const h of handlers) h(raw as unknown as WsEvent);
     } catch {
       // ignore malformed
     }
   });
   ws.addEventListener('close', () => {
     connected.set(false);
+    authed = false;
     socket = null;
   });
   socket = ws;
@@ -46,14 +59,21 @@ export function connectWs(token: string): WebSocket {
 }
 
 export function subscribeChannel(channel: string): void {
-  socket?.send(JSON.stringify({ type: 'subscribe', channel }));
+  if (authed && socket?.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: 'subscribe', channel }));
+  } else {
+    pendingSubscriptions.add(channel);
+  }
 }
 
 export function unsubscribeChannel(channel: string): void {
+  pendingSubscriptions.delete(channel);
   socket?.send(JSON.stringify({ type: 'unsubscribe', channel }));
 }
 
 export function disconnectWs(): void {
   socket?.close();
+  authed = false;
+  pendingSubscriptions.clear();
   socket = null;
 }
