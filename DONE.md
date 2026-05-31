@@ -3,9 +3,7 @@
 - questions/* - make it more clear for a long list that there are more messages above or below
 - questions - when the admin clicks "answered", the message should go to the bottom of the pile
 - users - keep the 'ban'ned users visible for admins, and add an 'unban' button next to the user
-
 - in the users page, sort the users first by active users (green dot), then alphabetically.
-
 - in the users tab, do the following:
   - always show the display name and the affiliation
   - do not show the bio

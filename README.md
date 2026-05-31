@@ -1,37 +1,65 @@
 # Event-Q&A
 
-A self-hosted companion tool for events and conferences. It displays the
-program (tracks, talks, rooms, speakers) and lets attendees ask and
-discuss questions per talk, browse other attendees, and exchange direct
-messages.
+> Self-hosted Q&A and discussion companion for events and conferences.
 
-To run an event, the admin writes a single `event.yaml` file describing
-the schedule and the admin accounts, then launches the tool on a server
-(Docker / docker-compose). Participants connect from any device using a
-self-chosen alias.
+Event-Q&A displays the program of an event (tracks, talks, rooms,
+speakers) and lets attendees ask and discuss questions per talk,
+browse other attendees, and exchange direct messages. To run an event,
+the admin writes a single `event.yaml` describing the schedule and
+launches the tool on a server. Participants connect from any device
+using a self-chosen alias.
 
-A short technical writeup lives in [TECHNICAL.md](./TECHNICAL.md).
+## Features
+
+- **Schedule view** — timeline grid on desktop, chronological list on
+  mobile, grouped by track and day.
+- **Per-talk Q&A** — attendees post questions, upvote them, and
+  discuss in a flat chatroom under each question.
+- **Direct messages** — simple two-party chat between any two
+  attendees.
+- **Lightweight auth** — claim an alias on first visit; optional
+  password to protect it across devices.
+- **Admin moderation** — hide questions/messages, mark questions as
+  answered, ban or rename users.
+- **Realtime updates** — new questions, votes, replies and DMs arrive
+  over WebSocket without reload.
+- **Dark mode** — follows OS preference, with a per-user override.
+- **Single config file** — everything (schedule, rooms, speakers,
+  admins) lives in one `event.yaml`.
+- **Single container** — backend, frontend and SQLite are served by
+  one Docker image; one mounted volume holds all state.
 
 ## Quick start
 
+Requires Docker and Docker Compose.
+
 ```bash
-# 1. Write your event.yaml (see "Configuration" below)
+# 1. Clone the repo and copy the example config
+git clone https://github.com/c4dt/event-qa.git
+cd event-qa
 cp event.example.yaml event.yaml
 $EDITOR event.yaml
 
 # 2. Start the stack
 docker compose up -d
 
-# 3. Put a TLS-terminating proxy (e.g. traefik) in front of port 3000.
+# 3. Put a TLS-terminating proxy (traefik, Caddy, nginx) in front of
+#    port 3000.
 ```
 
-For local development see [TECHNICAL.md](./TECHNICAL.md#development).
+The server listens on port `3000` and stores state in `./data`
+(`event.yaml` and the SQLite database).
+
+To generate an argon2id password hash for an admin entry:
+
+```bash
+docker run --rm -it ghcr.io/c4dt/event-qa hash-password
+```
 
 ## Configuration
 
-The admin creates a yaml file, `event.yaml`, mounted into the container
-at `/data/event.yaml`. The full format is documented in
-[TECHNICAL.md](./TECHNICAL.md#eventyaml-format); a minimal example:
+The admin maintains a single yaml file, `event.yaml`, mounted into the
+container at `/data/event.yaml`. A minimal example:
 
 ```yaml
 event:
@@ -56,7 +84,7 @@ speakers:
 
 admins:
   - alias: admin
-    password: "$argon2id$..."   # see TECHNICAL.md for how to hash
+    password: "$argon2id$..."   # see "Quick start" for how to hash
 
 tracks:
   - id: main-track
@@ -78,106 +106,68 @@ tracks:
         room: main
 ```
 
-The config is loaded once at server startup. To change it, edit the
-file and restart the container.
+The config is loaded once at server startup; to change it, edit the
+file and restart the container. The full schema and validation rules
+are documented in
+[TECHNICAL.md](./TECHNICAL.md#eventyaml-format).
 
-## User flow
+A complete sample is available at
+[`event.example.yaml`](./event.example.yaml).
 
-### Login
+## Development
 
-When a user first connects, they are asked for an **alias** and
-optionally a **name**, **affiliation**, **bio**, and **password**.
+All tooling (Node, pnpm, sqlite, argon2 CLI) is pinned via
+[devbox](https://www.jetify.com/devbox/) — do not rely on
+system-installed Node or pnpm.
 
-- The alias must not match any admin alias from `event.yaml`.
-- If the alias is unused (or was last seen >60s ago and has no
-  password), the user claims it.
-- If the alias has a password, the user must enter it to log in. A
-  password-protected alias may be used on multiple devices
-  simultaneously.
-- The alias and a session token are stored in `localStorage`. On
-  subsequent visits the user is auto-logged-in → **Landing page**.
+```bash
+# Enter the devbox shell
+devbox shell
 
-Logging out clears `localStorage` only. The account and all its data
-remain on the server; the user can log back in with the alias (and
-password, if set).
+# Install workspace dependencies
+pnpm install
 
-### Landing page
+# Run backend (:3000) and frontend (:5173) dev servers
+pnpm dev
 
-The program of the event, rendered responsively:
+# Run tests (red/green TDD)
+pnpm test
+```
 
-- **Desktop**: a timeline grid with one column per track (classic
-  conference grid).
-- **Mobile**: a single chronological list grouped by day, with track
-  and room shown as labels.
+Outside the devbox shell, prepend every command with `devbox run --`.
+See [TECHNICAL.md](./TECHNICAL.md#development) for more details on the
+toolchain, the repository layout, and the test strategy.
 
-Clicking a talk → **Talk page**. Clicking the "users" icon in the
-header → **Users list**.
+## Documentation
 
-### Talk page
+- [USER_GUIDE.md](./USER_GUIDE.md) — what attendees and admins see and
+  do (login, schedule, Q&A, DMs, moderation).
+- [TECHNICAL.md](./TECHNICAL.md) — architecture, data model, HTTP and
+  WebSocket APIs, deployment, security notes.
+- [`event.example.yaml`](./event.example.yaml) — annotated config
+  sample.
 
-Shows the talk's metadata (title, speakers, room, time, description)
-followed by the list of questions for that talk. Each question row
-shows the title, the author's current alias, the upvote count and
-button, and a message count.
+## Tech stack
 
-- Click the upvote button to upvote (one vote per user; click again to
-  remove).
-- Click a question → opens a **chatroom-style page** for that question
-  where any logged-in user can post messages. There is no threading;
-  it's a flat chat.
-- Click the author of a question → **User info**.
+| Layer       | Choice                                                 |
+|-------------|--------------------------------------------------------|
+| Backend     | Node.js (>=20) + Express + TypeScript                  |
+| Realtime    | WebSockets via `ws`                                    |
+| Frontend    | SvelteKit + TypeScript + Tailwind CSS                  |
+| Persistence | SQLite via `better-sqlite3`                            |
+| Passwords   | `argon2` (argon2id)                                    |
+| Config      | YAML (`js-yaml`) validated with `zod`                  |
+| Container   | Single multi-stage Dockerfile, run via docker-compose  |
+| Tests       | `vitest` for both backend and frontend                 |
 
-If Q&A is disabled for the talk (`qa: false` in the yaml), the talk
-page only shows metadata.
+## Contributing
 
-### Users list
+Issues and pull requests are welcome. Before opening a PR:
 
-Alphabetical list of all users with their alias, optional info, and a
-count of questions, messages, and last-seen timestamp.
-
-Click a user → **User info**.
-
-### User info
-
-Details about a user: their profile, the questions they posted, and
-their public messages. Has a button "Send DM" → **Direct Messages**.
-
-### Direct Messages
-
-A simple two-party chat. Only the two participants can read it via the
-API. Each user sees an unread DM badge in the header.
-
-## Admin powers
-
-Accounts listed under `admins:` in `event.yaml` must always log in with
-a password (no passwordless option). Once logged in they can:
-
-- Delete or hide any question or message.
-- Mark a question as answered (visual badge in the list).
-- Ban or rename any user.
-
-Admins use the same web UI; admin-only actions appear as extra buttons.
-
-## General layout
-
-The header is consistent across all pages:
-
-- Top-left: event name → links to the **Landing page**.
-- Top-right: user icon → opens a menu to edit profile (alias, name,
-  affiliation, bio, password), toggle dark mode, and log out.
-- Badges next to the user icon show unread DMs and new replies on
-  questions the user is watching (a user automatically watches any
-  question they opened or posted in).
-- "Users" icon → **Users list**.
-
-Dark mode follows the OS preference by default; users can override the
-choice from their profile menu.
-
-## Rate limiting
-
-To curb spam, each user is limited to a small number of posted
-questions / messages / DMs per minute (configurable, default 10/min
-total). Upvotes are not rate-limited beyond toggling.
+- Read [TECHNICAL.md](./TECHNICAL.md) to understand the architecture.
+- Run `pnpm lint` and `pnpm test` from the devbox shell.
+- For backend logic (auth, rate limiting, admin actions), follow
+  red/green TDD: write the failing test first, then the code.
 
 ## License
 
