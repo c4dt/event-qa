@@ -23,7 +23,8 @@ async function main(): Promise<void> {
   const auth = new Auth(db, sessionTtl);
   const ratelimit = new RateLimiter(cfg.ratelimit.posts_per_minute);
 
-  const app = createApp({ db, cfg, auth, ratelimit });
+  const staticDir = env('STATIC_DIR', '/app/frontend/build');
+  const app = createApp({ db, cfg, auth, ratelimit }, { staticDir });
   const server = createServer(app);
   attachWsHub(server, { db, cfg, auth, ratelimit });
 

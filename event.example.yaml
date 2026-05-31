@@ -1,0 +1,81 @@
+# Example event.yaml for event-qa. Copy to event.yaml and edit.
+# The full format is documented in TECHNICAL.md.
+
+event:
+  name: "My Conference 2026"
+  place: "EPFL, Lausanne"
+  start: 2026-06-01
+  end:   2026-06-02
+  timezone: "Europe/Zurich"
+  info: |
+    Welcome to the conference. Wi-Fi: guest / hunter2.
+
+rooms:
+  - id: main
+    name: "Main Hall"
+    description: "Ground floor, capacity 300"
+  - id: bh1
+    name: "Breakout 1"
+
+speakers:
+  - id: ada
+    name: "Ada Lovelace"
+    bio: "Mathematician, programmer."
+  - id: alan
+    name: "Alan Turing"
+    affiliation: "GCHQ"
+
+admins:
+  # Generate the hash with:  docker run --rm -it ghcr.io/c4dt/event-qa hash-password
+  # The example below hashes the password "changeme" — DO NOT use it in production.
+  - alias: admin
+    password: "$argon2id$v=19$m=65536,t=3,p=4$HyFKw0rMrLwNIF34gRTVSQ$Hu7syuDuh4B4b0sb4NmnfDxYhTx9W+Mllx+Gurmy3r0"
+
+tracks:
+  - id: main-track
+    name: "Main Track"
+    talks:
+      - id: opening
+        title: "Opening keynote"
+        description: |
+          A warm welcome and the year ahead.
+        start: 2026-06-01T09:00:00+02:00
+        duration_min: 45
+        speakers: [ada]
+        room: main
+
+      - id: coffee-1
+        type: slot
+        title: "Coffee break"
+        start: 2026-06-01T09:45:00+02:00
+        duration_min: 15
+        room: main
+        qa: false
+
+      - id: cryptography
+        title: "On computable numbers"
+        start: 2026-06-01T10:00:00+02:00
+        duration_min: 45
+        speakers: [alan]
+        room: main
+
+      - id: lunch
+        type: slot
+        title: "Lunch"
+        start: 2026-06-01T12:00:00+02:00
+        duration_min: 90
+        room: main
+        qa: false
+
+  - id: breakouts
+    name: "Breakouts"
+    talks:
+      - id: bh1-morning
+        title: "Hands-on cryptography lab"
+        start: 2026-06-01T10:00:00+02:00
+        duration_min: 90
+        speakers: [ada]
+        room: bh1
+
+ratelimit:
+  posts_per_minute: 10

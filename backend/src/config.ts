@@ -7,12 +7,27 @@ const slug = z
   .min(1)
   .regex(/^[a-z0-9][a-z0-9-]*$/i, 'must be a slug (alphanumeric and hyphens)');
 
+// js-yaml turns bare YYYY-MM-DD into a Date and full timestamps into
+// either a string or a Date depending on the form. Normalize both
+// into a string that we then validate.
+function toIsoString(v: unknown): unknown {
+  if (v instanceof Date) return v.toISOString();
+  return v;
+}
+
 const dateOnly = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD');
+  .preprocess((v) => {
+    if (v instanceof Date) {
+      const y = v.getUTCFullYear();
+      const m = String(v.getUTCMonth() + 1).padStart(2, '0');
+      const d = String(v.getUTCDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    return v;
+  }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD'));
 
 const isoDateTime = z
-  .string()
+  .preprocess(toIsoString, z.string())
   .refine((s) => !Number.isNaN(Date.parse(s)), 'must be a parseable ISO datetime');
 
 const roomSchema = z.object({

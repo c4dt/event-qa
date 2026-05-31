@@ -1,0 +1,13 @@
+services:
+  event-qa:
+    image: ghcr.io/c4dt/event-qa:latest
+    build: .
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    environment:
+      EVENT_CONFIG: /data/event.yaml
+      DB_PATH: /data/event-qa.db
+      LOG_LEVEL: info
+    ports:
+      - "127.0.0.1:3000:3000"
