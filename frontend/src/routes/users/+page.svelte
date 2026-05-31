@@ -39,9 +39,9 @@
       {@const dmCount = $unread.dms[u.alias] ?? 0}
       <li class="relative flex items-center justify-between rounded border border-gray-200 p-3 dark:border-gray-700">
         <a href={$auth.status === 'authed' && u.alias === $auth.user.alias ? '/profile' : `/users/${u.alias}`} class="absolute inset-0 z-0" aria-label={u.alias}></a>
-        <div class="relative z-10 flex items-center gap-3">
+        <div class="flex items-center gap-3">
           <span
-            class="h-2 w-2 rounded-full {isOnline(u) ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}"
+            class="h-2 w-2 flex-shrink-0 rounded-full {isOnline(u) ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}"
             title={isOnline(u) ? 'online' : 'offline'}
           ></span>
           <span class="font-medium">
@@ -50,15 +50,8 @@
               <span class="ml-1 text-xs text-purple-500">(admin)</span>
             {/if}
           </span>
-          {#if u.name}
-            <span class="text-sm text-gray-500">{u.name}</span>
-          {/if}
-          {#if u.affiliation}
-            <span class="text-sm text-gray-500">Affiliation: {u.affiliation}</span>
-          {/if}
-          {#if u.bio}
-            <span class="text-sm text-gray-400">Bio: {u.bio}</span>
-          {/if}
+          <span class="text-sm text-gray-500">{u.name ?? '—'}</span>
+          <span class="text-sm text-gray-500">{u.affiliation ?? '—'}</span>
         </div>
         <div class="relative z-10 flex items-center gap-3 text-sm">
           {#if u.question_count && u.question_count > 0}
