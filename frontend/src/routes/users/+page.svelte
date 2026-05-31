@@ -38,7 +38,7 @@
     {#each users as u (u.id)}
       {@const dmCount = $unread.dms[u.alias] ?? 0}
       <li class="relative flex items-center justify-between rounded border border-gray-200 p-3 dark:border-gray-700">
-        <a href={`/users/${u.alias}`} class="absolute inset-0 z-0" aria-label={u.alias}></a>
+        <a href={$auth.status === 'authed' && u.alias === $auth.user.alias ? '/profile' : `/users/${u.alias}`} class="absolute inset-0 z-0" aria-label={u.alias}></a>
         <div class="relative z-10 flex items-center gap-3">
           <span
             class="h-2 w-2 rounded-full {isOnline(u) ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}"

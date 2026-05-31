@@ -2,6 +2,13 @@
 
 # DONE
 
+- in breadcrumb, "Schedule > Talk > Question", the "Talk" should be replaced with the actual talk
+- in the talk discussion, 
+  - the reply field must be focused
+  - the upper part and the "reply" box must always be visible, the discussion must scroll between these two
+  - the messages must live-update
+  - if a message is sent, the same user can send another message
+- when a user clicks on their own name somewhere, it jumps to their user edit page
 - focus login field
 - make clickable area bigger, e.g., questions: upvoting must be bigger, also for mobile, and clicking anywhere else must go to the question
 - whatever a box is representing primarily, be it a talk, a question, or a user, must be jumped to when clicking on the empty parts of the box

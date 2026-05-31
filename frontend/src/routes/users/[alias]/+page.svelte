@@ -59,7 +59,11 @@
       <p class="mt-2 text-gray-700 dark:text-gray-300">{user.bio}</p>
     {/if}
 
-    {#if $auth.status === 'authed' && user.alias !== $auth.user.alias}
+    {#if $auth.status === 'authed' && user.alias === $auth.user.alias}
+      <a href="/profile" class="mt-3 inline-block rounded border border-gray-300 px-4 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">
+        Edit profile
+      </a>
+    {:else if $auth.status === 'authed'}
       <a href={`/dm/${user.alias}`} class="mt-3 inline-block rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">
         Send DM
       </a>

@@ -31,7 +31,7 @@
       {$theme === 'dark' ? '☀' : '☾'}
     </button>
     {#if $auth.status === 'authed'}
-      <a href="/profile" class="hover:underline">{$auth.user.alias}</a>
+      <a href="/profile" class="hover:underline" title="Edit your profile">{$auth.user.alias}</a>
       {#if totalQuestions > 0}
         <span class="rounded-full bg-blue-500 px-1.5 py-0.5 text-xs text-white" title="Unread question replies">
           {totalQuestions}
