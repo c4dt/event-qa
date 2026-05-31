@@ -66,6 +66,7 @@
       posting = false;
     }
     await tick();
+    scrollToBottom();
     replyInput?.focus();
   }
 
@@ -89,13 +90,14 @@
     removeHandler = addWsHandler(async (ev) => {
       if (ev.type === 'question.message' && ev.questionId === questionId) {
         if (!messages.find((m) => m.id === ev.message.id)) {
+          const isMine = ev.message.author_alias === myAlias;
           const atBottom = messageList
             ? messageList.scrollTop + messageList.clientHeight >= messageList.scrollHeight - 8
             : true;
           messages = [...messages, ev.message];
           if (question) question = { ...question, message_count: question.message_count + 1 };
           await tick();
-          if (atBottom) scrollToBottom();
+          if (isMine || atBottom) scrollToBottom();
           else updateScrollIndicators();
           replyInput?.focus();
         }
