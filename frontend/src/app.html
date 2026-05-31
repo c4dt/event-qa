@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en" %sveltekit.theme%>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Event Q&amp;A</title>
+    <script>
+      // Apply dark mode before paint to avoid a flash.
+      (function () {
+        try {
+          var stored = localStorage.getItem('eventqa.theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var dark = stored ? stored === 'dark' : prefersDark;
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (_) {
+          /* ignore */
+        }
+      })();
+    </script>
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover" class="bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>
