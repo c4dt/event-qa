@@ -1,84 +1,185 @@
 # Event-Q&A
 
-This program is a simple event accompagnying tool which shows
-the different tracks, gives informations about them,
-and allows the users to participate with questions.
-To configure it, the admin creates a yaml file with all
-the information about an event, and then launches the
-tool on a server.
-The participants can connect using any name they wish,
-ask questions, answer or discuss existing questions,
-and write DMs.
+A self-hosted companion tool for events and conferences. It displays the
+program (tracks, talks, rooms, speakers) and lets attendees ask and
+discuss questions per talk, browse other attendees, and exchange direct
+messages.
 
-There is a short technical writeup in 
-[TECHNICAL.md](./TECHNICAL.md).
+To run an event, the admin writes a single `event.yaml` file describing
+the schedule and the admin accounts, then launches the tool on a server
+(Docker / docker-compose). Participants connect from any device using a
+self-chosen alias.
+
+A short technical writeup lives in [TECHNICAL.md](./TECHNICAL.md).
+
+## Quick start
+
+```bash
+# 1. Write your event.yaml (see "Configuration" below)
+cp event.example.yaml event.yaml
+$EDITOR event.yaml
+
+# 2. Start the stack
+docker compose up -d
+
+# 3. Put a TLS-terminating proxy (e.g. traefik) in front of port 3000.
+```
+
+For local development see [TECHNICAL.md](./TECHNICAL.md#development).
 
 ## Configuration
 
-The admin creates a yaml file, event.yaml, which gives the
-following information:
+The admin creates a yaml file, `event.yaml`, mounted into the container
+at `/data/event.yaml`. The full format is documented in
+[TECHNICAL.md](./TECHNICAL.md#eventyaml-format); a minimal example:
 
-- event duration, place, additional information
-- the rooms available with a short name, and a fuller
-description
-- the list of speakers with their name, short bio
-- a list of admin accounts with alias/password
-- the availble tracks, and for each track a list of
-  - talks with start date, duration, speaker(s), track and room
+```yaml
+event:
+  name: "My Conference 2026"
+  place: "EPFL, Lausanne"
+  start: 2026-06-01
+  end:   2026-06-02
+  info: |
+    Welcome to the conference. Wi-Fi: guest / hunter2.
 
-# User flow
+rooms:
+  - id: main
+    name: "Main Hall"
+    description: "Ground floor, capacity 300"
+  - id: bh1
+    name: "Breakout 1"
 
-## Login
+speakers:
+  - id: ada
+    name: "Ada Lovelace"
+    bio: "Mathematician, programmer."
 
-When a user first connects to the website, it asks the user
-about their alias, and optionally their name, affiliation, and bio.
-This information is stored on the server, and the alias is stored
-in the localStorage of the browser.
-The alias cannot be one of the alias of the admin accounts.
--> Landing page
-If the user comes to the login page, and there is an alias stored
-in the localStorage, it is used to login -> Landing page
+admins:
+  - alias: admin
+    password: "$argon2id$..."   # see TECHNICAL.md for how to hash
 
-## Landing page
+tracks:
+  - id: main-track
+    name: "Main Track"
+    talks:
+      - id: opening
+        title: "Opening keynote"
+        start: 2026-06-01T09:00:00+02:00
+        duration_min: 45
+        speakers: [ada]
+        room: main
+        # qa: true     # optional, default true. Set to false for breaks/socials.
 
-Once the user is logged in, they see the program of the day
-in a responsive way - bigger for a desktop browser, less information
-on a mobile system.
-The user can click on a talk to see more information -> Talk page.
-The user can also click on the "users" icon to see an alphabetic list
-of all available users -> Users list
+      - id: lunch
+        type: slot      # non-talk entry: no speaker, no Q&A
+        title: "Lunch"
+        start: 2026-06-01T12:00:00+02:00
+        duration_min: 90
+        room: main
+```
 
-## Talk page
+The config is loaded once at server startup. To change it, edit the
+file and restart the container.
 
-On the talk page, the user sees already available questions, and can:
-- upvote a question
-- add a message to a question, or reply to an already existing message
-- click on the author of the question -> User info
+## User flow
 
-## Users list
+### Login
 
-Shows an alphabetic list of users with their alias, and some of the
-optional information they added.
-For each user it also shows a count of questions, messages, and
-last interaction with the system.
-When click on a user, it goes to -> User info
+When a user first connects, they are asked for an **alias** and
+optionally a **name**, **affiliation**, **bio**, and **password**.
 
-## User info
+- The alias must not match any admin alias from `event.yaml`.
+- If the alias is unused (or was last seen >60s ago and has no
+  password), the user claims it.
+- If the alias has a password, the user must enter it to log in. A
+  password-protected alias may be used on multiple devices
+  simultaneously.
+- The alias and a session token are stored in `localStorage`. On
+  subsequent visits the user is auto-logged-in → **Landing page**.
 
-Shows details about the user wrt their info, their questions, and
-their public messages.
-Also allows to start a DM -> Direct Messages
+Logging out clears `localStorage` only. The account and all its data
+remain on the server; the user can log back in with the alias (and
+password, if set).
 
-## Direct Messages
+### Landing page
 
-A very simple chat where two users can discuss and exchange
-information.
+The program of the event, rendered responsively:
 
-# General Layout
+- **Desktop**: a timeline grid with one column per track (classic
+  conference grid).
+- **Mobile**: a single chronological list grouped by day, with track
+  and room shown as labels.
 
-The webpage should follow the general layout and be as
-easy navigatable as possible.
-In the upper right, the user sees their icon, can click
-on it to edit their information, including their alias.
-The user can also log out, which will delete the alias
-name from the localStorage.
+Clicking a talk → **Talk page**. Clicking the "users" icon in the
+header → **Users list**.
+
+### Talk page
+
+Shows the talk's metadata (title, speakers, room, time, description)
+followed by the list of questions for that talk. Each question row
+shows the title, the author's current alias, the upvote count and
+button, and a message count.
+
+- Click the upvote button to upvote (one vote per user; click again to
+  remove).
+- Click a question → opens a **chatroom-style page** for that question
+  where any logged-in user can post messages. There is no threading;
+  it's a flat chat.
+- Click the author of a question → **User info**.
+
+If Q&A is disabled for the talk (`qa: false` in the yaml), the talk
+page only shows metadata.
+
+### Users list
+
+Alphabetical list of all users with their alias, optional info, and a
+count of questions, messages, and last-seen timestamp.
+
+Click a user → **User info**.
+
+### User info
+
+Details about a user: their profile, the questions they posted, and
+their public messages. Has a button "Send DM" → **Direct Messages**.
+
+### Direct Messages
+
+A simple two-party chat. Only the two participants can read it via the
+API. Each user sees an unread DM badge in the header.
+
+## Admin powers
+
+Accounts listed under `admins:` in `event.yaml` must always log in with
+a password (no passwordless option). Once logged in they can:
+
+- Delete or hide any question or message.
+- Mark a question as answered (visual badge in the list).
+- Ban or rename any user.
+
+Admins use the same web UI; admin-only actions appear as extra buttons.
+
+## General layout
+
+The header is consistent across all pages:
+
+- Top-left: event name → links to the **Landing page**.
+- Top-right: user icon → opens a menu to edit profile (alias, name,
+  affiliation, bio, password), toggle dark mode, and log out.
+- Badges next to the user icon show unread DMs and new replies on
+  questions the user is watching (a user automatically watches any
+  question they opened or posted in).
+- "Users" icon → **Users list**.
+
+Dark mode follows the OS preference by default; users can override the
+choice from their profile menu.
+
+## Rate limiting
+
+To curb spam, each user is limited to a small number of posted
+questions / messages / DMs per minute (configurable, default 10/min
+total). Upvotes are not rate-limited beyond toggling.
+
+## License
+
+Licensed under the GNU Affero General Public License v3.0 or later
+(AGPL-3.0-or-later). See [LICENSE](./LICENSE) for the full text.
