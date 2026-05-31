@@ -4,6 +4,7 @@
   import { auth } from '$lib/stores/auth.js';
   import { api } from '$lib/api.js';
   import type { UserWithActivity, Question } from '$lib/types.js';
+  import Markdown from '$lib/components/Markdown.svelte';
 
   $: alias = $page.params.alias;
 
@@ -56,7 +57,10 @@
       <p class="text-sm text-gray-500"><span class="font-medium">Affiliation:</span> {user.affiliation}</p>
     {/if}
     {#if user.bio}
-      <p class="mt-2 text-gray-700 dark:text-gray-300"><span class="font-medium">Bio:</span> {user.bio}</p>
+      <div class="mt-2 text-gray-700 dark:text-gray-300">
+        <span class="font-medium">Bio:</span>
+        <Markdown source={user.bio} />
+      </div>
     {/if}
 
     {#if $auth.status === 'authed' && user.alias === $auth.user.alias}

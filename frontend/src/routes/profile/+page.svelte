@@ -120,7 +120,9 @@
       </div>
 
       <div>
-        <label for="bio" class="block text-sm font-medium">Bio</label>
+        <label for="bio" class="block text-sm font-medium">
+          Bio <span class="text-gray-400 font-normal">(markdown supported)</span>
+        </label>
         <textarea
           id="bio"
           bind:value={bio}
