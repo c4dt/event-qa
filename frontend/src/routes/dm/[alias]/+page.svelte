@@ -71,7 +71,7 @@
   }
 </script>
 
-<div class="flex h-full flex-col" style="height: calc(100vh - 8rem)">
+<div class="flex h-full flex-col" style="height: calc(100vh - 11rem)">
   <nav class="mb-2 text-sm text-gray-500">
     <a href="/users" class="hover:underline">Attendees</a>
     <span class="mx-1">›</span>

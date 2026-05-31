@@ -1,5 +1,6 @@
 # 2026-05-31
 
+- add a copyright message to the bottom of all pages, and a github icon pointing to the repo
 - writing a new message in questions/* should always scroll to the end of the messages
 - questions/* - make it more clear for a long list that there are more messages above or below
 - questions - when the admin clicks "answered", the message should go to the bottom of the pile

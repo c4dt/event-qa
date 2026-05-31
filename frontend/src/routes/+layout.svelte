@@ -8,6 +8,7 @@
   import { api } from '$lib/api.js';
   import { connectWs, disconnectWs, addWsHandler } from '$lib/ws.js';
   import Header from '$lib/components/Header.svelte';
+  import Footer from '$lib/components/Footer.svelte';
 
   let eventName = 'Event Q&A';
   let removeWsHandler: (() => void) | null = null;
@@ -59,4 +60,5 @@
   <main class="flex-1 p-4">
     <slot />
   </main>
+  <Footer />
 </div>

@@ -122,7 +122,7 @@
 {:else if !question}
   <p>Loading…</p>
 {:else}
-  <div class="flex h-[calc(100vh-8rem)] flex-col">
+  <div class="flex h-[calc(100vh-11rem)] flex-col">
     <!-- Sticky top: breadcrumb + question header -->
     <div class="flex-shrink-0">
       <nav class="mb-4 text-sm text-gray-500">
