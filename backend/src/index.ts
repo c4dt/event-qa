@@ -34,7 +34,11 @@ async function main(): Promise<void> {
   });
 }
 
-main().catch((err) => {
-  log.error({ err }, 'fatal');
-  process.exit(1);
-});
+if (process.argv[2] === 'hash-password') {
+  await import('./cli.js');
+} else {
+  main().catch((err) => {
+    log.error({ err }, 'fatal');
+    process.exit(1);
+  });
+}
