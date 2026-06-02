@@ -22,6 +22,7 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
     const { db } = req.ctx!;
     const { talkId } = req.params;
     const userId = req.user!.id;
+    const isAdmin = req.user!.is_admin === 1;
     const questions = db
       .prepare<[number, string], {
         id: number; talk_id: string; author_id: number; title: string;
@@ -35,7 +36,7 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
          FROM questions q
          LEFT JOIN upvotes u ON u.question_id = q.id
          JOIN users usr ON usr.id = q.author_id
-         WHERE q.talk_id = ? AND q.hidden = 0
+         WHERE q.talk_id = ?${isAdmin ? '' : ' AND q.hidden = 0'}
          GROUP BY q.id
          ORDER BY vote_count DESC, q.created_at ASC`,
       )
@@ -97,6 +98,7 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
     const { db } = req.ctx!;
     const id = Number(req.params.id);
     const userId = req.user!.id;
+    const isAdmin = req.user!.is_admin === 1;
 
     const question = db
       .prepare<[number, number], { id: number; talk_id: string; author_id: number; title: string; created_at: number; hidden: number; answered: number; vote_count: number; user_voted: number; author_alias: string; message_count: number }>(
@@ -107,7 +109,7 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
          FROM questions q
          LEFT JOIN upvotes u ON u.question_id = q.id
          JOIN users usr ON usr.id = q.author_id
-         WHERE q.id = ? AND q.hidden = 0
+         WHERE q.id = ?${isAdmin ? '' : ' AND q.hidden = 0'}
          GROUP BY q.id`,
       )
       .get(userId, id);

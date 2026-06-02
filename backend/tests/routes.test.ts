@@ -302,6 +302,44 @@ describe('admin routes', () => {
     expect(list.body.questions).toHaveLength(0);
   });
 
+  it('admin still sees hidden questions and can unhide them', async () => {
+    const post = await request(app)
+      .post('/api/talks/talk1/questions')
+      .set(auth(tokenAlice))
+      .send({ title: 'Q' });
+    const id = post.body.question.id as number;
+    await request(app).delete(`/api/admin/questions/${id}`).set(auth(adminToken));
+
+    const adminList = await request(app).get('/api/talks/talk1/questions').set(auth(adminToken));
+    expect(adminList.body.questions).toHaveLength(1);
+    expect(adminList.body.questions[0].hidden).toBe(1);
+
+    const adminDetail = await request(app).get(`/api/questions/${id}`).set(auth(adminToken));
+    expect(adminDetail.status).toBe(200);
+    expect(adminDetail.body.question.hidden).toBe(1);
+
+    const aliceDetail = await request(app).get(`/api/questions/${id}`).set(auth(tokenAlice));
+    expect(aliceDetail.status).toBe(404);
+
+    const unhide = await request(app).post(`/api/admin/questions/${id}/unhide`).set(auth(adminToken));
+    expect(unhide.status).toBe(200);
+
+    const aliceListAfter = await request(app).get('/api/talks/talk1/questions').set(auth(tokenAlice));
+    expect(aliceListAfter.body.questions).toHaveLength(1);
+    expect(aliceListAfter.body.questions[0].hidden).toBe(0);
+  });
+
+  it('non-admin cannot unhide question', async () => {
+    const post = await request(app)
+      .post('/api/talks/talk1/questions')
+      .set(auth(tokenAlice))
+      .send({ title: 'Q' });
+    const id = post.body.question.id as number;
+    await request(app).delete(`/api/admin/questions/${id}`).set(auth(adminToken));
+    const r = await request(app).post(`/api/admin/questions/${id}/unhide`).set(auth(tokenAlice));
+    expect(r.status).toBe(403);
+  });
+
   it('admin can toggle answered', async () => {
     const post = await request(app)
       .post('/api/talks/talk1/questions')

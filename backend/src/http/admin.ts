@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { requireAuth } from './context.js';
+import type { DB } from '../db.js';
 import type { WebSocketServer } from 'ws';
 
 function requireAdmin(req: Request, res: Response, next: NextFunction): void {
@@ -25,6 +26,18 @@ export function makeAdminRouter(wss?: WebSocketServer): Router {
   const adminRouter: Router = Router();
   adminRouter.use(requireAuth, requireAdmin);
 
+  const fullQuestionStmt = (db: DB) =>
+    db.prepare<[number], { id: number; talk_id: string; author_id: number; title: string; created_at: number; hidden: number; answered: number; vote_count: number; user_voted: number; author_alias: string; message_count: number }>(
+      `SELECT q.*, COUNT(DISTINCT u.user_id) AS vote_count, 0 AS user_voted,
+              usr.alias AS author_alias,
+              (SELECT COUNT(*) FROM question_messages m WHERE m.question_id = q.id AND m.hidden = 0) AS message_count
+       FROM questions q
+       LEFT JOIN upvotes u ON u.question_id = q.id
+       JOIN users usr ON usr.id = q.author_id
+       WHERE q.id = ?
+       GROUP BY q.id`,
+    );
+
   // DELETE /api/admin/questions/:id — hide question
   adminRouter.delete('/questions/:id', (req, res) => {
     const { db } = req.ctx!;
@@ -36,12 +49,26 @@ export function makeAdminRouter(wss?: WebSocketServer): Router {
     }
     db.prepare('UPDATE questions SET hidden = 1 WHERE id = ?').run(id);
 
-    const updatedQ = db
-      .prepare<[number], { id: number; talk_id: string; author_id: number; title: string; created_at: number; hidden: number; answered: number }>(
-        'SELECT * FROM questions WHERE id = ?',
-      )
-      .get(id)!;
-    broadcast(`talk:${q.talk_id}`, { type: 'question.update', question: { ...updatedQ, vote_count: 0, user_voted: 0 } });
+    const updatedQ = fullQuestionStmt(db).get(id)!;
+    broadcast(`talk:${q.talk_id}`, { type: 'question.update', question: updatedQ });
+    broadcast(`question:${id}`, { type: 'question.update', question: updatedQ });
+    res.json({ ok: true });
+  });
+
+  // POST /api/admin/questions/:id/unhide — unhide question
+  adminRouter.post('/questions/:id/unhide', (req, res) => {
+    const { db } = req.ctx!;
+    const id = Number(req.params.id);
+    const q = db.prepare<[number], { id: number; talk_id: string }>('SELECT id, talk_id FROM questions WHERE id = ?').get(id);
+    if (!q) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    db.prepare('UPDATE questions SET hidden = 0 WHERE id = ?').run(id);
+
+    const updatedQ = fullQuestionStmt(db).get(id)!;
+    broadcast(`talk:${q.talk_id}`, { type: 'question.update', question: updatedQ });
+    broadcast(`question:${id}`, { type: 'question.update', question: updatedQ });
     res.json({ ok: true });
   });
 

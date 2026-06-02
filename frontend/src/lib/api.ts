@@ -93,6 +93,7 @@ export const api = {
   unread: () => call<UnreadCounts>('GET', '/api/unread'),
 
   adminHideQuestion: (id: number) => call<{ ok: true }>('DELETE', `/api/admin/questions/${id}`),
+  adminUnhideQuestion: (id: number) => call<{ ok: true }>('POST', `/api/admin/questions/${id}/unhide`),
   adminHideMessage: (id: number) => call<{ ok: true }>('DELETE', `/api/admin/messages/${id}`),
   adminToggleAnswered: (id: number) => call<{ answered: boolean }>('POST', `/api/admin/questions/${id}/answered`),
   adminBanUser: (alias: string) => call<{ banned: boolean }>('POST', `/api/admin/users/${alias}/ban`),

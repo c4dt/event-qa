@@ -55,6 +55,8 @@
 
   let removeHandler: (() => void) | null = null;
 
+  $: isAdmin = $auth.status === 'authed' && $auth.user.is_admin;
+
   onMount(async () => {
     await load();
     subscribeChannel(`talk:${talkId}`);
@@ -64,7 +66,16 @@
           questions = [ev.question, ...questions];
         }
       } else if (ev.type === 'question.update') {
-        questions = questions.map((q) => (q.id === ev.question.id ? ev.question : q));
+        const existing = questions.find((q) => q.id === ev.question.id);
+        if (existing) {
+          if (ev.question.hidden && !isAdmin) {
+            questions = questions.filter((q) => q.id !== ev.question.id);
+          } else {
+            questions = questions.map((q) => (q.id === ev.question.id ? ev.question : q));
+          }
+        } else if (isAdmin && ev.question.talk_id === talkId) {
+          questions = [ev.question, ...questions];
+        }
       }
     });
   });
@@ -132,7 +143,8 @@
       <ul class="space-y-2">
         {#each sortedQuestions(questions) as q (q.id)}
           <li class="relative flex items-start gap-3 rounded border border-gray-200 p-3 dark:border-gray-700
-            {q.answered ? 'border-green-300 dark:border-green-700' : ''}">
+            {q.answered ? 'border-green-300 dark:border-green-700' : ''}
+            {q.hidden ? 'border-dashed border-gray-400 bg-gray-50 opacity-60 dark:border-gray-500 dark:bg-gray-800/40' : ''}">
             <button
               type="button"
               class="relative z-10 flex min-h-[3rem] min-w-[3rem] flex-col items-center justify-center rounded border px-3 py-2 text-sm font-semibold transition-colors
@@ -151,6 +163,9 @@
               {#if q.answered}
                 <span class="ml-2 rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-700 dark:bg-green-900 dark:text-green-300">answered</span>
               {/if}
+              {#if q.hidden}
+                <span class="ml-2 rounded bg-gray-200 px-1.5 py-0.5 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-200">hidden</span>
+              {/if}
               <div class="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
                 <span>by <a href={$auth.status === 'authed' && q.author_alias === $auth.user.alias ? '/profile' : `/users/${q.author_alias}`} class="hover:underline pointer-events-auto">{q.author_alias}</a></span>
                 {#if q.message_count > 0}
@@ -159,15 +174,26 @@
               </div>
             </div>
 
-            {#if $auth.status === 'authed' && $auth.user.is_admin}
-              <button
-                type="button"
-                class="relative z-10 text-xs text-red-500 hover:underline"
-                on:click|stopPropagation={async () => {
-                  await api.adminHideQuestion(q.id);
-                  questions = questions.filter((v) => v.id !== q.id);
-                }}
-              >hide</button>
+            {#if isAdmin}
+              {#if q.hidden}
+                <button
+                  type="button"
+                  class="relative z-10 text-xs text-blue-500 hover:underline"
+                  on:click|stopPropagation={async () => {
+                    await api.adminUnhideQuestion(q.id);
+                    questions = questions.map((v) => v.id === q.id ? { ...v, hidden: 0 } : v);
+                  }}
+                >unhide</button>
+              {:else}
+                <button
+                  type="button"
+                  class="relative z-10 text-xs text-red-500 hover:underline"
+                  on:click|stopPropagation={async () => {
+                    await api.adminHideQuestion(q.id);
+                    questions = questions.map((v) => v.id === q.id ? { ...v, hidden: 1 } : v);
+                  }}
+                >hide</button>
+              {/if}
               <button
                 type="button"
                 class="relative z-10 text-xs text-gray-500 hover:underline"
