@@ -58,7 +58,11 @@
     if (!newBody.trim() || !question) return;
     posting = true;
     try {
-      await api.createMessage(question.id, newBody.trim());
+      const { message } = await api.createMessage(question.id, newBody.trim());
+      if (!messages.find((m) => m.id === message.id)) {
+        messages = [...messages, message];
+        question = { ...question, message_count: question.message_count + 1 };
+      }
       newBody = '';
     } catch (err) {
       error = (err as Error).message;
