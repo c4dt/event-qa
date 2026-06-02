@@ -16,12 +16,12 @@
   <a href="/" class="text-lg font-semibold hover:underline">{eventName}</a>
 
   <nav class="flex items-center gap-3 text-sm">
-    <a href="/users" class="relative hover:underline">
-      Users
-      {#if totalDms > 0}
-        <span class="ml-1 rounded-full bg-red-500 px-1.5 py-0.5 text-xs text-white">{totalDms}</span>
-      {/if}
-    </a>
+    <a href="/users" class="hover:underline">Users</a>
+    {#if totalDms > 0}
+      <a href="/users" class="hover:underline" title="Unread direct messages">
+        <span class="rounded-full bg-red-500 px-1.5 py-0.5 text-xs text-white">{totalDms}</span>
+      </a>
+    {/if}
     <button
       type="button"
       class="rounded border border-gray-300 px-2 py-1 dark:border-gray-600"

@@ -74,10 +74,18 @@
             <span class="text-gray-400">{u.question_count} Q</span>
           {/if}
           {#if $auth.status === 'authed' && u.alias !== $auth.user.alias && !u.banned}
+            {@const dmTotal = u.dm_count ?? 0}
             <a href={`/dm/${u.alias}`} class="text-blue-600 hover:underline dark:text-blue-400">
               DM
-              {#if dmCount > 0}
-                <span class="ml-0.5 rounded-full bg-red-500 px-1 py-0.5 text-xs text-white">{dmCount}</span>
+              {#if dmTotal > 0}
+                <span class="ml-0.5 text-xs text-gray-500" title="Unread / total messages">
+                  {#if dmCount > 0}
+                    <span class="rounded-full bg-red-500 px-1 py-0.5 text-white">{dmCount}</span>
+                    / {dmTotal}
+                  {:else}
+                    {dmTotal}
+                  {/if}
+                </span>
               {/if}
             </a>
           {/if}

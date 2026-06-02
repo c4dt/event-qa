@@ -13,6 +13,7 @@ export type PublicUser = {
 export type UserWithActivity = PublicUser & {
   last_seen: number | null;
   question_count?: number;
+  dm_count?: number;
 };
 
 export type EventMeta = {

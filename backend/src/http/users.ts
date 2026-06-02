@@ -9,30 +9,36 @@ usersRouter.use(requireAuth);
 // Admins also see banned users (so they can unban them).
 usersRouter.get('/', (req, res) => {
   const { db } = req.ctx!;
-  const isAdmin = req.user?.is_admin === 1;
+  const me = req.user!;
+  const isAdmin = me.is_admin === 1;
   const whereClause = isAdmin ? '' : 'WHERE u.banned = 0';
   const rows = db
-    .prepare<[], {
+    .prepare<[number, number], {
       id: number; alias: string; name: string | null; affiliation: string | null;
       bio: string | null; is_admin: number; banned: number;
-      last_seen: number | null; question_count: number;
+      last_seen: number | null; question_count: number; dm_count: number;
     }>(
       `SELECT u.id, u.alias, u.name, u.affiliation, u.bio, u.is_admin, u.banned,
               MAX(s.last_seen) AS last_seen,
-              COUNT(DISTINCT q.id) AS question_count
+              COUNT(DISTINCT q.id) AS question_count,
+              COUNT(DISTINCT d.id) AS dm_count
        FROM users u
        LEFT JOIN sessions s ON s.user_id = u.id
        LEFT JOIN questions q ON q.author_id = u.id AND q.hidden = 0
+       LEFT JOIN dm_messages d ON
+         (d.user_a = ? AND d.user_b = u.id) OR
+         (d.user_b = ? AND d.user_a = u.id)
        ${whereClause}
        GROUP BY u.id
        ORDER BY u.alias ASC`,
     )
-    .all();
+    .all(me.id, me.id);
 
   const users = rows.map((r) => ({
     ...toPublicUser(r),
     last_seen: r.last_seen ?? null,
     question_count: r.question_count,
+    dm_count: r.dm_count,
   }));
   res.json({ users });
 });
