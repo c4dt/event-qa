@@ -8,6 +8,7 @@
 
   $: totalDms = Object.values($unread.dms).reduce((a, b) => a + b, 0);
   $: totalQuestions = Object.values($unread.questions).reduce((a, b) => a + b, 0);
+  $: firstUnreadQuestionId = Object.keys($unread.questions).find((id) => ($unread.questions[id] ?? 0) > 0);
 </script>
 
 <header
@@ -32,10 +33,12 @@
     </button>
     {#if $auth.status === 'authed'}
       <a href="/profile" class="hover:underline" title="Edit your profile">{$auth.user.alias}</a>
-      {#if totalQuestions > 0}
-        <span class="rounded-full bg-blue-500 px-1.5 py-0.5 text-xs text-white" title="Unread question replies">
-          {totalQuestions}
-        </span>
+      {#if totalQuestions > 0 && firstUnreadQuestionId}
+        <a href={`/questions/${firstUnreadQuestionId}`} class="hover:underline" title="Unread question replies">
+          <span class="rounded-full bg-blue-500 px-1.5 py-0.5 text-xs text-white">
+            {totalQuestions}
+          </span>
+        </a>
       {/if}
       <button
         type="button"
