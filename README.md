@@ -34,11 +34,13 @@ using a self-chosen alias.
 Requires Docker and Docker Compose.
 
 ```bash
-# 1. Clone the repo and copy the example config
+# 1. Clone the repo and copy the example config into ./data, the
+#    directory that gets mounted into the container
 git clone https://github.com/c4dt/event-qa.git
 cd event-qa
-cp event.example.yaml event.yaml
-$EDITOR event.yaml
+mkdir -p data
+cp event.example.yaml data/event.yaml
+$EDITOR data/event.yaml
 
 # 2. Start the stack
 docker compose up -d

@@ -20,6 +20,7 @@ RUN pnpm --filter @event-qa/frontend build \
 # ---------- runtime ----------
 FROM node:22-alpine
 WORKDIR /app
+RUN apk add --no-cache su-exec
 RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 
 # Install only production dependencies, scoped to the backend workspace.
@@ -37,13 +38,16 @@ ENV DB_PATH=/data/event-qa.db
 ENV STATIC_DIR=/app/frontend/build
 ENV PORT=3000
 
-# Drop to a non-root user.
+# Runtime user; entrypoint drops privileges to it after fixing /data
+# ownership (needed because /data is normally a host bind mount that
+# Docker may auto-create as root).
 RUN addgroup -S app && adduser -S app -G app \
  && mkdir -p /data \
  && chown -R app:app /data /app
-USER app
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 3000
 VOLUME ["/data"]
 
-ENTRYPOINT ["node", "backend/dist/index.js"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
