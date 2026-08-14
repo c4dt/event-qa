@@ -29,72 +29,160 @@
       .join(', ');
   }
 
+  function roomName(schedule: Schedule, roomId: string): string {
+    return schedule.rooms.find((r) => r.id === roomId)?.name ?? roomId;
+  }
+
+  // The room a track's talks mostly happen in — shown under the track name.
+  function trackRoomName(schedule: Schedule, track: Track): string | null {
+    const counts = new Map<string, number>();
+    for (const t of track.talks) {
+      counts.set(t.room, (counts.get(t.room) ?? 0) + 1);
+    }
+    let bestRoom: string | null = null;
+    let bestCount = 0;
+    for (const [room, count] of counts) {
+      if (count > bestCount) {
+        bestCount = count;
+        bestRoom = room;
+      }
+    }
+    if (!bestRoom) return null;
+    return schedule.rooms.find((r) => r.id === bestRoom)?.name ?? bestRoom;
+  }
+
   // For the timeline grid: collect all unique days and rooms
-  type GridTalk = Talk & { trackName: string; trackIndex: number };
+  type GridTalk = Talk & {
+    trackName: string;
+    trackIndex: number;
+    spansAllTracks: boolean;
+    gridRowStart: number;
+    gridRowSpan: number;
+  };
 
   // Minutes per grid row — small enough to render arbitrary talk durations smoothly.
   const ROW_MIN = 5;
+  // Pixel height of one grid row.
+  const ROW_PX = 20;
+  // A break that fills every track (nothing else running) is capped to this many
+  // rows — its box only needs to fit its text, not its real-world duration.
+  const BREAK_ROW_CAP = 3;
 
   type Day = {
     date: string;
     tracks: Track[];
     talks: GridTalk[];
-    startMs: number;
     rowCount: number;
     timeLabels: Array<{ label: string; row: number }>;
   };
 
   function buildDays(schedule: Schedule): Day[] {
-    const allTalks: GridTalk[] = schedule.tracks.flatMap((tr, trackIndex) =>
+    const allTalks = schedule.tracks.flatMap((tr, trackIndex) =>
       tr.talks.map((t) => ({ ...t, trackName: tr.name, trackIndex }))
     );
 
-    const dayMap = new Map<string, GridTalk[]>();
+    const dayMap = new Map<string, typeof allTalks>();
     for (const talk of allTalks) {
       const day = new Date(talk.start).toDateString();
       if (!dayMap.has(day)) dayMap.set(day, []);
       dayMap.get(day)!.push(talk);
     }
 
-    return Array.from(dayMap.values()).map((talks) => {
-      talks.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
-      const startMs = Math.min(...talks.map((t) => Date.parse(t.start)));
-      const endMs = Math.max(
-        ...talks.map((t) => Date.parse(t.start) + t.duration_min * 60_000)
-      );
-      const rowCount = Math.ceil((endMs - startMs) / (ROW_MIN * 60_000));
+    return Array.from(dayMap.values()).map((rawTalks) => {
+      rawTalks.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 
-      // Time labels: one per unique talk start time.
+      // A break/slot only fills every track column when nothing else is running
+      // during it — if a talk overlaps it in another track, keep it confined to
+      // its own track column so it doesn't cover up concurrent sessions.
+      const spansAllTracks = new Map<string, boolean>();
+      for (const t of rawTalks) {
+        if (t.type !== 'slot') continue;
+        const tStart = Date.parse(t.start);
+        const tEnd = tStart + t.duration_min * 60_000;
+        const overlapsTalk = rawTalks.some((other) => {
+          if (other === t || other.type !== 'talk') return false;
+          const oStart = Date.parse(other.start);
+          const oEnd = oStart + other.duration_min * 60_000;
+          return oStart < tEnd && oEnd > tStart;
+        });
+        spansAllTracks.set(t.id, !overlapsTalk);
+      }
+
+      // Map real clock time to grid rows, compressing stretches where only a
+      // full-width break is running — those only need rows enough for their
+      // text, not their real duration — while keeping talk time proportional.
+      const boundaries = Array.from(
+        new Set(rawTalks.flatMap((t) => [Date.parse(t.start), Date.parse(t.start) + t.duration_min * 60_000]))
+      ).sort((a, b) => a - b);
+
+      const rowAt = new Map<number, number>();
+      rowAt.set(boundaries[0], 0);
+      let cumRows = 0;
+      for (let i = 0; i < boundaries.length - 1; i++) {
+        const segStart = boundaries[i];
+        const segEnd = boundaries[i + 1];
+        const realRows = Math.max(1, Math.round((segEnd - segStart) / (ROW_MIN * 60_000)));
+        const breakOnly = rawTalks.every((t) => {
+          const tStart = Date.parse(t.start);
+          const tEnd = tStart + t.duration_min * 60_000;
+          const active = tStart < segEnd && tEnd > segStart;
+          if (!active) return true;
+          return t.type === 'slot' && (spansAllTracks.get(t.id) ?? false);
+        });
+        cumRows += breakOnly ? Math.min(realRows, BREAK_ROW_CAP) : realRows;
+        rowAt.set(segEnd, cumRows);
+      }
+
+      const talks: GridTalk[] = rawTalks.map((t) => {
+        const tStart = Date.parse(t.start);
+        const tEnd = tStart + t.duration_min * 60_000;
+        return {
+          ...t,
+          spansAllTracks: spansAllTracks.get(t.id) ?? false,
+          gridRowStart: rowAt.get(tStart)! + 1,
+          gridRowSpan: Math.max(1, rowAt.get(tEnd)! - rowAt.get(tStart)!),
+        };
+      });
+
+      // Time labels: one per unique talk start time, plus a final label for
+      // when the day actually ends.
       const uniqueStarts = Array.from(new Set(talks.map((t) => t.start))).sort(
         (a, b) => Date.parse(a) - Date.parse(b)
       );
       const timeLabels = uniqueStarts.map((s) => ({
         label: fmtTime(s),
-        row: Math.round((Date.parse(s) - startMs) / (ROW_MIN * 60_000)) + 1,
+        row: rowAt.get(Date.parse(s))! + 1,
       }));
+      const endMs = boundaries[boundaries.length - 1];
+      timeLabels.push({
+        label: fmtTime(new Date(endMs).toISOString()),
+        row: rowAt.get(endMs)! + 1,
+      });
 
       return {
-        date: new Date(startMs).toISOString(),
+        date: new Date(boundaries[0]).toISOString(),
         tracks: schedule.tracks,
         talks,
-        startMs,
-        rowCount,
+        rowCount: cumRows + 1,
         timeLabels,
       };
     });
   }
 
-  function talkGridStyle(talk: GridTalk, day: Day): string {
-    const rowStart = Math.round((Date.parse(talk.start) - day.startMs) / (ROW_MIN * 60_000)) + 1;
-    const rowSpan = Math.max(1, Math.round(talk.duration_min / ROW_MIN));
+  function talkGridStyle(talk: GridTalk): string {
+    if (talk.spansAllTracks) {
+      // Breaks with nothing running concurrently fill every track column.
+      return `grid-column: 2 / -1; grid-row: ${talk.gridRowStart} / span ${talk.gridRowSpan};`;
+    }
+
     // Columns alternate: gutter, track, gutter, track, ... so track i is at column 2*(i+1).
     const col = (talk.trackIndex + 1) * 2;
-    return `grid-column: ${col}; grid-row: ${rowStart} / span ${rowSpan};`;
+    return `grid-column: ${col}; grid-row: ${talk.gridRowStart} / span ${talk.gridRowSpan};`;
   }
 
-  function flatTalks(schedule: Schedule): GridTalk[] {
+  function flatTalks(schedule: Schedule): Array<Talk & { trackName: string }> {
     return schedule.tracks
-      .flatMap((tr, trackIndex) => tr.talks.map((t) => ({ ...t, trackName: tr.name, trackIndex })))
+      .flatMap((tr) => tr.talks.map((t) => ({ ...t, trackName: tr.name })))
       .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
   }
 </script>
@@ -118,7 +206,7 @@
             <span class="text-sm text-gray-500 shrink-0 whitespace-nowrap">{fmtTime(talk.start)}</span>
           </div>
           <div class="relative z-10 pointer-events-none text-sm text-gray-500">
-            {talk.trackName}
+            {talk.trackName} · {roomName(schedule, talk.room)}
             {#if talk.speakers.length > 0}
               · {speakerNames(schedule, talk.speakers)}
             {/if}
@@ -132,7 +220,7 @@
             <span class="text-sm text-gray-500 shrink-0 whitespace-nowrap">{fmtTime(talk.start)}</span>
           </div>
           <div class="text-sm text-gray-500">
-            {talk.trackName}
+            {talk.trackName} · {roomName(schedule, talk.room)}
             {#if talk.speakers.length > 0}
               · {speakerNames(schedule, talk.speakers)}
             {/if}
@@ -155,9 +243,13 @@
           style="grid-template-columns: {day.tracks.map(() => '60px 1fr').join(' ')}"
         >
           {#each day.tracks as track}
+            {@const roomName = trackRoomName(schedule, track)}
             <div></div>
-            <div class="text-center text-sm font-semibold text-gray-600 dark:text-gray-400 border-b pb-1">
-              {track.name}
+            <div class="flex h-full flex-col text-center text-sm font-semibold text-gray-600 dark:text-gray-400 border-b pb-1">
+              <span>{track.name}</span>
+              {#if roomName}
+                <div class="mt-auto text-xs font-normal text-gray-400">{roomName}</div>
+              {/if}
             </div>
           {/each}
         </div>
@@ -165,7 +257,7 @@
         <!-- Timeline grid: rows = ROW_MIN-minute slots, columns = (time gutter + track) repeated per track -->
         <div
           class="grid gap-x-2"
-          style="grid-template-columns: {day.tracks.map(() => '60px 1fr').join(' ')}; grid-template-rows: repeat({day.rowCount}, 6px);"
+          style="grid-template-columns: {day.tracks.map(() => '60px 1fr').join(' ')}; grid-template-rows: repeat({day.rowCount}, {ROW_PX}px);"
         >
           <!-- Time labels: one gutter column before each track -->
           {#each day.tracks as _, trackIndex}
@@ -185,7 +277,7 @@
               <a
                 href={`/talks/${talk.id}`}
                 class="block rounded border p-2 text-sm bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 overflow-hidden"
-                style={talkGridStyle(talk, day)}
+                style={talkGridStyle(talk)}
               >
                 <span class="font-medium">{talk.title}</span>
                 <span class="text-xs text-gray-400">· {talk.duration_min} min</span>
@@ -195,14 +287,11 @@
               </a>
             {:else}
               <div
-                class="rounded border p-2 text-sm bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700 overflow-hidden"
-                style={talkGridStyle(talk, day)}
+                class="flex items-center justify-center gap-2 rounded border p-2 text-sm bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700 overflow-hidden"
+                style={talkGridStyle(talk)}
               >
                 <span class="font-medium">{talk.title}</span>
-                <span class="text-xs text-gray-400">· {talk.duration_min} min</span>
-                {#if talk.speakers.length > 0}
-                  <div class="text-xs text-gray-400 mt-1">{speakerNames(schedule, talk.speakers)}</div>
-                {/if}
+                <span class="text-xs text-gray-400 whitespace-nowrap">· {talk.duration_min} min</span>
               </div>
             {/if}
           {/each}
