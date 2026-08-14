@@ -26,7 +26,7 @@ speakers:
     affiliation: "GCHQ"
 
 admins:
-  # Generate the hash with:  docker run --rm -it ghcr.io/c4dt/event-qa hash-password
+  # Generate the hash with:  docker run --rm -it registry.gitlab.com/rse-switzerland/event-qa hash-password
   # The example below hashes the password "changeme" — DO NOT use it in production.
   - alias: admin
     password: "$argon2id$v=19$m=65536,t=3,p=4$HyFKw0rMrLwNIF34gRTVSQ$Hu7syuDuh4B4b0sb4NmnfDxYhTx9W+Mllx+Gurmy3r0"

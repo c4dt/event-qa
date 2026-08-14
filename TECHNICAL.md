@@ -202,7 +202,7 @@ prompts for a password and prints the argon2id hash to paste into the
 yaml.
 
 ```bash
-docker run --rm -it ghcr.io/c4dt/event-qa hash-password
+docker run --rm -it registry.gitlab.com/rse-switzerland/event-qa hash-password
 ```
 
 ### Environment variables
@@ -432,7 +432,7 @@ DB (idempotent UPSERT/DELETE).
 # docker-compose.yaml
 services:
   event-qa:
-    image: ghcr.io/c4dt/event-qa:latest
+    image: registry.gitlab.com/rse-switzerland/event-qa:latest
     restart: unless-stopped
     volumes:
       - ./data:/data        # holds event.yaml and event-qa.db
@@ -457,24 +457,24 @@ Multi-stage:
 Persistent state: just the `/data` volume. SQLite is opened with
 `PRAGMA journal_mode=WAL` for concurrent reads while the server writes.
 
-## CI/CD (GitHub Actions)
+## CI/CD (GitLab CI)
 
-Two workflows under `.github/workflows/`:
+Defined in `.gitlab-ci.yml`, two stages:
 
-### `ci.yaml` — on every push and PR
+### `test` — on every push to `main` and every MR
 
-- Set up Node 20 and pnpm.
+- Set up Node 22 and pnpm via corepack.
 - `pnpm install --frozen-lockfile`.
-- `pnpm lint` (ESLint + Prettier `--check` + `svelte-check`).
-- `pnpm test` (vitest in both workspaces).
+- Typecheck the backend, `pnpm -r test`, `pnpm -r build`.
 - Fails the job on any error.
 
-### `publish.yaml` — on push to `main`
+### `publish` — on push to `main`
 
-- Build the multi-stage Dockerfile.
-- Tag as `ghcr.io/c4dt/event-qa:latest` and
-  `ghcr.io/c4dt/event-qa:<short-sha>`.
-- Push to GHCR using `GITHUB_TOKEN`.
+- Build the multi-stage Dockerfile using `docker:dind`.
+- Tag as `$CI_REGISTRY_IMAGE:latest` and `$CI_REGISTRY_IMAGE:<short-sha>`
+  (i.e. `registry.gitlab.com/rse-switzerland/event-qa`).
+- Push to the GitLab Container Registry using the built-in
+  `CI_REGISTRY_USER` / `CI_REGISTRY_PASSWORD` credentials.
 - Single-arch (`linux/amd64`) for v1; multi-arch can be added later.
 
 Tag-based releases (e.g., `v1.2.3`) are out of scope for v1 and can be

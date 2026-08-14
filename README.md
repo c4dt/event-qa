@@ -55,7 +55,7 @@ The server listens on port `3000` and stores state in `./data`
 To generate an argon2id password hash for an admin entry:
 
 ```bash
-docker run --rm -it ghcr.io/c4dt/event-qa hash-password
+docker run --rm -it registry.gitlab.com/rse-switzerland/event-qa hash-password
 ```
 
 ## Configuration
