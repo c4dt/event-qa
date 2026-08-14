@@ -5,11 +5,12 @@
   import { unread } from '$lib/stores/unread.js';
   import { api } from '$lib/api.js';
   import { addWsHandler, subscribeChannel, unsubscribeChannel } from '$lib/ws.js';
-  import type { Question, Schedule, Talk, Speaker } from '$lib/types.js';
+  import type { EventMeta, Question, Schedule, Talk, Speaker } from '$lib/types.js';
 
   $: talkId = $page.params.talkId ?? '';
 
   let schedule: Schedule | null = null;
+  let event: EventMeta | null = null;
   let questions: Question[] = [];
   let newTitle = '';
   let posting = false;
@@ -23,8 +24,9 @@
 
   async function load() {
     try {
-      [schedule, { questions }] = await Promise.all([
+      [schedule, event, { questions }] = await Promise.all([
         api.schedule(),
+        api.event(),
         api.talkQuestions(talkId),
       ]);
     } catch (err) {
@@ -56,6 +58,7 @@
   let removeHandler: (() => void) | null = null;
 
   $: isAdmin = $auth.status === 'authed' && $auth.user.is_admin;
+  $: canAsk = isAdmin || (event?.allow_non_admin_questions ?? true);
 
   onMount(async () => {
     await load();
@@ -119,7 +122,7 @@
   {#if qaEnabled}
     <h2 class="mb-3 text-lg font-medium">Questions</h2>
 
-    {#if $auth.status === 'authed'}
+    {#if $auth.status === 'authed' && canAsk}
       <form class="mb-4 flex gap-2" on:submit|preventDefault={postQuestion}>
         <input
           bind:value={newTitle}
@@ -135,6 +138,8 @@
           Ask
         </button>
       </form>
+    {:else if $auth.status === 'authed'}
+      <p class="mb-4 text-sm text-gray-500">Only admins can ask questions right now.</p>
     {/if}
 
     {#if sortedQuestions(questions).length === 0}

@@ -100,4 +100,6 @@ export const api = {
   adminToggleAnswered: (id: number) => call<{ answered: boolean }>('POST', `/api/admin/questions/${id}/answered`),
   adminBanUser: (alias: string) => call<{ banned: boolean }>('POST', `/api/admin/users/${alias}/ban`),
   adminSetUserAdmin: (alias: string) => call<{ is_admin: boolean }>('POST', `/api/admin/users/${alias}/admin`),
+  adminToggleAllowNonAdminQuestions: () =>
+    call<{ allow_non_admin_questions: boolean }>('POST', '/api/admin/settings/allow-non-admin-questions'),
 };

@@ -17,6 +17,9 @@
   <a href="/" class="text-lg font-semibold hover:underline">{eventName}</a>
 
   <nav class="flex items-center gap-3 text-sm">
+    {#if $auth.status === 'authed' && $auth.user.is_admin}
+      <a href="/admin" class="hover:underline">Settings</a>
+    {/if}
     <a href="/users" class="hover:underline">Users</a>
     {#if totalDms > 0}
       <a href="/users" class="hover:underline" title="Unread direct messages">

@@ -438,4 +438,38 @@ describe('admin routes', () => {
     const q = await request(app).get(`/api/questions/${id}`).set(auth(tokenAlice));
     expect(q.body.messages).toHaveLength(0);
   });
+
+  it('allow_non_admin_questions defaults to true and is toggled by admin', async () => {
+    const before = await request(app).get('/api/event').set(auth(tokenAlice));
+    expect(before.body.allow_non_admin_questions).toBe(true);
+
+    const toggle = await request(app).post('/api/admin/settings/allow-non-admin-questions').set(auth(adminToken));
+    expect(toggle.status).toBe(200);
+    expect(toggle.body.allow_non_admin_questions).toBe(false);
+
+    const after = await request(app).get('/api/event').set(auth(tokenAlice));
+    expect(after.body.allow_non_admin_questions).toBe(false);
+  });
+
+  it('non-admin cannot toggle allow_non_admin_questions', async () => {
+    const r = await request(app).post('/api/admin/settings/allow-non-admin-questions').set(auth(tokenAlice));
+    expect(r.status).toBe(403);
+  });
+
+  it('blocks non-admin questions once disabled, but admins can still post', async () => {
+    await request(app).post('/api/admin/settings/allow-non-admin-questions').set(auth(adminToken));
+
+    const blocked = await request(app)
+      .post('/api/talks/talk1/questions')
+      .set(auth(tokenAlice))
+      .send({ title: 'Q' });
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.error).toBe('questions_disabled');
+
+    const allowed = await request(app)
+      .post('/api/talks/talk1/questions')
+      .set(auth(adminToken))
+      .send({ title: 'Q from admin' });
+    expect(allowed.status).toBe(201);
+  });
 });

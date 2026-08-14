@@ -72,6 +72,11 @@ CREATE TABLE IF NOT EXISTS watches (
   question_id INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   PRIMARY KEY (user_id, question_id)
 );
+
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `;
 
 export type DB = Database.Database;

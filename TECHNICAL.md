@@ -296,6 +296,13 @@ CREATE TABLE watches (
   question_id INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   PRIMARY KEY (user_id, question_id)
 );
+
+-- Runtime, admin-toggleable event settings (e.g. "allow_non_admin_questions").
+-- Missing keys fall back to a hardcoded default (see backend/src/settings.ts).
+CREATE TABLE settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 ```
 
 Admin accounts in `event.yaml` are synced into `users` at startup
@@ -313,6 +320,13 @@ out once their current session expires. Runtime-granted admins are not
 persisted to `event.yaml`, so they survive restarts (the `users` row is
 untouched) but won't show up there; `syncAdmins` never revokes rights
 it didn't grant.
+
+Admins can also disable question submission for everyone except
+admins via `POST /api/admin/settings/allow-non-admin-questions`
+(toggle, stored in the `settings` table, defaults to allowed). Non-admins
+get `403 questions_disabled` from `POST /api/talks/:talkId/questions`
+while it's off; the current value is exposed on `GET /api/event` so the
+frontend can hide the "Ask" form.
 
 ## Authentication & alias claiming
 
@@ -358,7 +372,7 @@ All paths under `/api`. JSON in/out. Auth via `Authorization: Bearer`.
 | POST   | `/api/auth/logout`                    | Drop current session                       |
 | GET    | `/api/me`                             | Current user object                        |
 | PATCH  | `/api/me`                             | Update profile (incl. alias, password)     |
-| GET    | `/api/event`                          | Static event metadata (name, place, info)  |
+| GET    | `/api/event`                          | Event metadata + `allow_non_admin_questions` |
 | GET    | `/api/schedule`                       | Tracks, talks, rooms, speakers             |
 | GET    | `/api/users`                          | Users list with counts and `last_seen`     |
 | GET    | `/api/users/:alias`                   | One user's public profile + activity       |
@@ -379,6 +393,7 @@ All paths under `/api`. JSON in/out. Auth via `Authorization: Bearer`.
 | POST   | `/api/admin/users/:alias/ban`         | Admin: toggle ban                          |
 | POST   | `/api/admin/users/:alias/admin`       | Admin: toggle admin rights                 |
 | PATCH  | `/api/admin/users/:alias`             | Admin: rename                              |
+| POST   | `/api/admin/settings/allow-non-admin-questions` | Admin: toggle whether non-admins can ask questions |
 
 ## Realtime (WebSocket)
 

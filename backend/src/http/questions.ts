@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth } from './context.js';
+import { getBoolSetting } from '../settings.js';
 import type { WebSocketServer } from 'ws';
 
 export function makeQuestionsRouters(wss?: WebSocketServer) {
@@ -58,6 +59,11 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
     const talk = allTalks.find((t) => t.id === talkId);
     if (!talk) {
       res.status(404).json({ error: 'talk_not_found' });
+      return;
+    }
+
+    if (user.is_admin !== 1 && !getBoolSetting(db, 'allow_non_admin_questions')) {
+      res.status(403).json({ error: 'questions_disabled' });
       return;
     }
 

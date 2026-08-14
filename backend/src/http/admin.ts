@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAuth } from './context.js';
 import type { DB } from '../db.js';
 import type { WebSocketServer } from 'ws';
+import { getBoolSetting, setBoolSetting } from '../settings.js';
 
 function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   if (req.user?.is_admin !== 1) {
@@ -145,6 +146,14 @@ export function makeAdminRouter(wss?: WebSocketServer): Router {
     }
     db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').run(newIsAdmin, user.id);
     res.json({ is_admin: !!newIsAdmin });
+  });
+
+  // POST /api/admin/settings/allow-non-admin-questions — toggle
+  adminRouter.post('/settings/allow-non-admin-questions', (req, res) => {
+    const { db } = req.ctx!;
+    const newVal = !getBoolSetting(db, 'allow_non_admin_questions');
+    setBoolSetting(db, 'allow_non_admin_questions', newVal);
+    res.json({ allow_non_admin_questions: newVal });
   });
 
   const patchAdminUserBody = z.object({

@@ -23,6 +23,7 @@ export type EventMeta = {
   end: string;
   info: string | null;
   timezone: string;
+  allow_non_admin_questions: boolean;
 };
 
 export type Room = { id: string; name: string; description?: string };

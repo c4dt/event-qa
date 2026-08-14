@@ -1,9 +1,11 @@
 import { Router } from 'express';
+import { getBoolSetting } from '../settings.js';
 
 export const eventRouter: Router = Router();
 
 eventRouter.get('/event', (req, res) => {
-  const { event } = req.ctx!.cfg;
+  const { db, cfg } = req.ctx!;
+  const { event } = cfg;
   res.json({
     name: event.name,
     place: event.place,
@@ -11,6 +13,7 @@ eventRouter.get('/event', (req, res) => {
     end: event.end,
     info: event.info ?? null,
     timezone: event.timezone,
+    allow_non_admin_questions: getBoolSetting(db, 'allow_non_admin_questions'),
   });
 });
 
