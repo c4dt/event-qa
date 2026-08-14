@@ -128,6 +128,25 @@ export function makeAdminRouter(wss?: WebSocketServer): Router {
     res.json({ banned: !!newBanned });
   });
 
+  // POST /api/admin/users/:alias/admin — toggle admin rights
+  adminRouter.post('/users/:alias/admin', (req, res) => {
+    const { db } = req.ctx!;
+    const user = db.prepare<[string], { id: number; is_admin: number; password_hash: string | null }>('SELECT id, is_admin, password_hash FROM users WHERE alias = ? COLLATE NOCASE').get(req.params.alias);
+    if (!user) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    const newIsAdmin = user.is_admin ? 0 : 1;
+    if (newIsAdmin && !user.password_hash) {
+      // Admin login always requires a password (see Auth.login); promoting a
+      // passwordless user would lock them out once their session expires.
+      res.status(409).json({ error: 'password_required' });
+      return;
+    }
+    db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').run(newIsAdmin, user.id);
+    res.json({ is_admin: !!newIsAdmin });
+  });
+
   const patchAdminUserBody = z.object({
     alias: z.string().min(1).max(64).optional(),
   });

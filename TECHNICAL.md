@@ -304,6 +304,16 @@ admin alias collision with an existing regular user takes over the row
 (its `is_admin` flips to 1) — operators are responsible for picking
 admin aliases that won't surprise attendees.
 
+Existing admins can also grant/revoke admin rights on any other user at
+runtime via `POST /api/admin/users/:alias/admin` (toggle). Since admin
+logins always require a password (see below), granting admin to a
+passwordless user is rejected with `409 password_required` until that
+user sets a password via `PATCH /api/me` — otherwise they'd be locked
+out once their current session expires. Runtime-granted admins are not
+persisted to `event.yaml`, so they survive restarts (the `users` row is
+untouched) but won't show up there; `syncAdmins` never revokes rights
+it didn't grant.
+
 ## Authentication & alias claiming
 
 Aliases are case-insensitive. The flow:
@@ -366,6 +376,7 @@ All paths under `/api`. JSON in/out. Auth via `Authorization: Bearer`.
 | DELETE | `/api/admin/messages/:id`             | Admin: hide message                        |
 | POST   | `/api/admin/questions/:id/answered`   | Admin: toggle answered flag                |
 | POST   | `/api/admin/users/:alias/ban`         | Admin: toggle ban                          |
+| POST   | `/api/admin/users/:alias/admin`       | Admin: toggle admin rights                 |
 | PATCH  | `/api/admin/users/:alias`             | Admin: rename                              |
 
 ## Realtime (WebSocket)

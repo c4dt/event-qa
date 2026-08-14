@@ -360,6 +360,35 @@ describe('admin routes', () => {
     expect(me.status).toBe(401);
   });
 
+  it('admin can grant and revoke admin rights on a user with a password', async () => {
+    db.prepare('UPDATE users SET password_hash = ? WHERE alias = ?').run('some-hash', 'bob');
+
+    const grant = await request(app).post('/api/admin/users/bob/admin').set(auth(adminToken));
+    expect(grant.status).toBe(200);
+    expect(grant.body.is_admin).toBe(true);
+
+    const bobRow = db.prepare<[string], { is_admin: number }>('SELECT is_admin FROM users WHERE alias = ?').get('bob');
+    expect(bobRow?.is_admin).toBe(1);
+
+    const revoke = await request(app).post('/api/admin/users/bob/admin').set(auth(adminToken));
+    expect(revoke.status).toBe(200);
+    expect(revoke.body.is_admin).toBe(false);
+  });
+
+  it('cannot grant admin to a passwordless user', async () => {
+    const r = await request(app).post('/api/admin/users/bob/admin').set(auth(adminToken));
+    expect(r.status).toBe(409);
+    expect(r.body.error).toBe('password_required');
+
+    const bobRow = db.prepare<[string], { is_admin: number }>('SELECT is_admin FROM users WHERE alias = ?').get('bob');
+    expect(bobRow?.is_admin).toBe(0);
+  });
+
+  it('non-admin cannot grant admin rights', async () => {
+    const r = await request(app).post('/api/admin/users/bob/admin').set(auth(tokenAlice));
+    expect(r.status).toBe(403);
+  });
+
   it('admin can hide message', async () => {
     const post = await request(app)
       .post('/api/talks/talk1/questions')

@@ -2,11 +2,26 @@
   import { onMount } from 'svelte';
   import { auth } from '$lib/stores/auth.js';
   import { unread } from '$lib/stores/unread.js';
-  import { api } from '$lib/api.js';
+  import { api, ApiCallError } from '$lib/api.js';
   import type { UserWithActivity } from '$lib/types.js';
 
   let users: UserWithActivity[] = [];
   let error: string | null = null;
+  let adminActionError: string | null = null;
+
+  async function toggleAdmin(alias: string) {
+    adminActionError = null;
+    try {
+      const { is_admin } = await api.adminSetUserAdmin(alias);
+      users = users.map((v) => (v.alias === alias ? { ...v, is_admin } : v));
+    } catch (err) {
+      if (err instanceof ApiCallError && err.body.error === 'password_required') {
+        adminActionError = `${alias} needs to set a password before becoming an admin.`;
+      } else {
+        adminActionError = (err as Error).message;
+      }
+    }
+  }
 
   const PRESENCE_WINDOW = 60_000;
 
@@ -44,6 +59,9 @@
 {#if error}
   <p class="text-red-600">{error}</p>
 {:else}
+  {#if adminActionError}
+    <p class="mb-4 text-red-600">{adminActionError}</p>
+  {/if}
   <ul class="space-y-2">
     {#each sortedUsers as u (u.id)}
       {@const dmCount = $unread.dms[u.alias] ?? 0}
@@ -88,6 +106,13 @@
                 </span>
               {/if}
             </a>
+          {/if}
+          {#if $auth.status === 'authed' && $auth.user.is_admin && u.alias !== $auth.user.alias}
+            <button
+              type="button"
+              class="text-xs {u.is_admin ? 'text-gray-500' : 'text-purple-600'} hover:underline"
+              on:click|stopPropagation={() => toggleAdmin(u.alias)}
+            >{u.is_admin ? 'revoke admin' : 'make admin'}</button>
           {/if}
           {#if $auth.status === 'authed' && $auth.user.is_admin}
             <button
