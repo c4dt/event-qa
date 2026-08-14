@@ -132,6 +132,57 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
     res.json({ question, messages });
   });
 
+  const updateQuestionBody = z.object({
+    title: z.string().min(1).max(512),
+  });
+
+  // PATCH /api/questions/:id — author can edit their own question's title
+  questionsRouter.patch('/:id', (req, res) => {
+    const { db } = req.ctx!;
+    const id = Number(req.params.id);
+    const user = req.user!;
+
+    const question = db
+      .prepare<[number], { id: number; talk_id: string; author_id: number; hidden: number }>(
+        'SELECT id, talk_id, author_id, hidden FROM questions WHERE id = ?',
+      )
+      .get(id);
+    if (!question || question.hidden) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    if (question.author_id !== user.id) {
+      res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+
+    const parsed = updateQuestionBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'invalid_body', issues: parsed.error.issues });
+      return;
+    }
+
+    db.prepare('UPDATE questions SET title = ? WHERE id = ?').run(parsed.data.title, id);
+
+    const updatedQuestion = db
+      .prepare<[number, number], { id: number; talk_id: string; author_id: number; title: string; created_at: number; hidden: number; answered: number; vote_count: number; user_voted: number; author_alias: string; message_count: number }>(
+        `SELECT q.*, COUNT(DISTINCT u.user_id) AS vote_count,
+                MAX(CASE WHEN u.user_id = ? THEN 1 ELSE 0 END) AS user_voted,
+                usr.alias AS author_alias,
+                (SELECT COUNT(*) FROM question_messages m WHERE m.question_id = q.id AND m.hidden = 0) AS message_count
+         FROM questions q
+         LEFT JOIN upvotes u ON u.question_id = q.id
+         JOIN users usr ON usr.id = q.author_id
+         WHERE q.id = ?
+         GROUP BY q.id`,
+      )
+      .get(user.id, id)!;
+
+    broadcast(`talk:${question.talk_id}`, { type: 'question.update', question: updatedQuestion });
+    broadcast(`question:${id}`, { type: 'question.update', question: updatedQuestion });
+    res.json({ question: updatedQuestion });
+  });
+
   const createMessageBody = z.object({
     body: z.string().min(1).max(2048),
   });

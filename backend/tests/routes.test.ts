@@ -145,6 +145,38 @@ describe('questions', () => {
     expect(down.body.vote_count).toBe(0);
   });
 
+  it('PATCH /api/questions/:id lets the author edit the title', async () => {
+    const post = await request(app)
+      .post('/api/talks/talk1/questions')
+      .set(auth(tokenAlice))
+      .send({ title: 'Q?' });
+    const id = post.body.question.id as number;
+
+    const patch = await request(app)
+      .patch(`/api/questions/${id}`)
+      .set(auth(tokenAlice))
+      .send({ title: 'Edited question?' });
+    expect(patch.status).toBe(200);
+    expect(patch.body.question.title).toBe('Edited question?');
+
+    const r = await request(app).get(`/api/questions/${id}`).set(auth(tokenAlice));
+    expect(r.body.question.title).toBe('Edited question?');
+  });
+
+  it('PATCH /api/questions/:id rejects non-authors', async () => {
+    const post = await request(app)
+      .post('/api/talks/talk1/questions')
+      .set(auth(tokenAlice))
+      .send({ title: 'Q?' });
+    const id = post.body.question.id as number;
+
+    const patch = await request(app)
+      .patch(`/api/questions/${id}`)
+      .set(auth(tokenBob))
+      .send({ title: 'Hijacked' });
+    expect(patch.status).toBe(403);
+  });
+
   it('read marks question as read', async () => {
     const post = await request(app)
       .post('/api/talks/talk1/questions')

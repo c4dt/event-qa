@@ -19,6 +19,10 @@
   let messageList: HTMLElement;
   let moreAbove = false;
   let moreBelow = false;
+  let editingTitle = false;
+  let editTitle = '';
+  let savingTitle = false;
+  let titleInput: HTMLInputElement;
 
   function updateScrollIndicators() {
     if (!messageList) return;
@@ -31,6 +35,7 @@
     : null;
 
   $: myAlias = $auth.status === 'authed' ? $auth.user.alias : null;
+  $: isAuthor = !!question && myAlias === question.author_alias;
 
   $: if (replyInput) replyInput.focus();
 
@@ -72,6 +77,31 @@
     await tick();
     scrollToBottom();
     replyInput?.focus();
+  }
+
+  function startEditTitle() {
+    if (!question) return;
+    editTitle = question.title;
+    editingTitle = true;
+    tick().then(() => titleInput?.focus());
+  }
+
+  function cancelEditTitle() {
+    editingTitle = false;
+  }
+
+  async function saveTitle() {
+    if (!question || !editTitle.trim()) return;
+    savingTitle = true;
+    try {
+      const { question: updated } = await api.updateQuestion(question.id, editTitle.trim());
+      question = updated;
+      editingTitle = false;
+    } catch (err) {
+      error = (err as Error).message;
+    } finally {
+      savingTitle = false;
+    }
   }
 
   function scrollToBottom() {
@@ -139,7 +169,40 @@
 
       <div class="mb-4 rounded border border-gray-200 p-4 dark:border-gray-700
         {question.answered ? 'border-green-300 dark:border-green-700' : ''}">
-        <h1 class="text-xl font-semibold">{question.title}</h1>
+        {#if editingTitle}
+          <form class="flex gap-2" on:submit|preventDefault={saveTitle}>
+            <input
+              bind:this={titleInput}
+              bind:value={editTitle}
+              class="flex-1 rounded border border-gray-300 px-2 py-1 text-xl font-semibold dark:border-gray-600 dark:bg-gray-800"
+              disabled={savingTitle}
+              maxlength="512"
+            />
+            <button
+              type="submit"
+              class="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+              disabled={savingTitle || !editTitle.trim()}
+            >Save</button>
+            <button
+              type="button"
+              class="rounded border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
+              disabled={savingTitle}
+              on:click={cancelEditTitle}
+            >Cancel</button>
+          </form>
+        {:else}
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-semibold">{question.title}</h1>
+            {#if isAuthor}
+              <button
+                type="button"
+                class="text-sm text-gray-400 hover:text-gray-600 hover:underline dark:hover:text-gray-200"
+                title="Edit question"
+                on:click={startEditTitle}
+              >edit</button>
+            {/if}
+          </div>
+        {/if}
         <div class="mt-1 flex items-center gap-3 text-sm text-gray-500">
           <span>by <a href={userHref(question.author_alias)} class="hover:underline">{question.author_alias}</a></span>
           <span>▲ {question.vote_count}</span>

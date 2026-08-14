@@ -365,6 +365,7 @@ All paths under `/api`. JSON in/out. Auth via `Authorization: Bearer`.
 | GET    | `/api/talks/:talkId/questions`        | Questions for a talk (with vote counts)    |
 | POST   | `/api/talks/:talkId/questions`        | Create a question (also auto-watches)      |
 | GET    | `/api/questions/:id`                  | One question with all its messages         |
+| PATCH  | `/api/questions/:id`                  | Author: edit the question's title          |
 | POST   | `/api/questions/:id/messages`         | Post a message (also auto-watches)         |
 | POST   | `/api/questions/:id/upvote`           | Toggle the caller's upvote                 |
 | POST   | `/api/questions/:id/read`             | Mark as read (clears badge)                |

@@ -73,6 +73,8 @@ export const api = {
 
   getQuestion: (id: number) =>
     call<{ question: Question; messages: QuestionMessage[] }>('GET', `/api/questions/${id}`),
+  updateQuestion: (id: number, title: string) =>
+    call<{ question: Question }>('PATCH', `/api/questions/${id}`, { title }),
   createMessage: (questionId: number, body: string) =>
     call<{ message: QuestionMessage }>('POST', `/api/questions/${questionId}/messages`, { body }),
   upvote: (questionId: number) =>
