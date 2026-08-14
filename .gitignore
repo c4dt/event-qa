@@ -25,4 +25,3 @@ data/
 .env
 .env.local
 .env.*.local
-event.yaml

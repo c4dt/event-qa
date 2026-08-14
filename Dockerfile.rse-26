@@ -1,0 +1,7 @@
+# Variant of the base event-qa image with the Swiss RSE Day 2026
+# event.yaml baked in, so it can run without a mounted config file.
+ARG BASE_IMAGE=event-qa:latest
+FROM ${BASE_IMAGE}
+
+COPY --chown=app:app event.yaml /app/event.yaml
+ENV EVENT_CONFIG=/app/event.yaml

@@ -1,0 +1,342 @@
+# event.yaml for the Annual Swiss RSE Day 2026
+# Generated from https://rse.swiss/swiss_rse_day/ and
+# https://rse.swiss/swiss_rse_day/schedule/
+#
+# NOTE: the source schedule gives no end time for the closing Apéro
+# (17:00 onward) — duration_min for that entry is a 60-minute
+# placeholder, adjust as needed.
+
+event:
+  name: "Annual Swiss RSE Day 2026"
+  place: "CAB Building, ETH Zurich Centrum, Zurich, Switzerland"
+  start: 2026-08-31
+  end:   2026-08-31
+  timezone: "Europe/Zurich"
+  info: |
+    A full-day event bringing together Research Software Engineers
+    from academia, research, and industry, exploring RSE in Open
+    Research Data and Open Science, artificial intelligence within
+    Research Software Engineering, and community building among RSE
+    professionals.
+
+    Registration is free and closes 2026-08-17.
+
+    Contact: rse-contact@sympa.ethz.ch
+
+rooms:
+  - id: main
+    name: "Main / Foyer"
+    description: "Welcome coffee, lunch, breaks, closing and Apéro"
+  - id: g61
+    name: "Room G61"
+  - id: g59
+    name: "Room G59"
+  - id: g56
+    name: "Room G56"
+  - id: g52
+    name: "Room G52"
+  - id: g57
+    name: "Room G57"
+
+speakers:
+  - id: markus-kreft
+    name: "Markus Kreft"
+    affiliation: "Agentic Systems Lab"
+  - id: yang-hu
+    name: "Yang Hu"
+    affiliation: "EMPA"
+  - id: ben-thomas
+    name: "Ben Thomas"
+    affiliation: "Software Sustainability Institute UK"
+  - id: kenneth-rioja
+    name: "Kenneth Rioja"
+    affiliation: "CERN"
+  - id: reto-trappitsch
+    name: "Reto Trappitsch"
+    affiliation: "EPFL"
+  - id: michael-weinold
+    name: "Michael Weinold"
+    affiliation: "ecoinvent Association"
+  - id: stefanie-hauser
+    name: "Stefanie Hauser"
+    affiliation: "EMPA"
+  - id: arnaud-mercier
+    name: "Arnaud Mercier"
+    affiliation: "PhD in Mathematical Geophysics, D-EAPS, ETH Zurich"
+  - id: elisabet-capon-garcia
+    name: "Elisabet Capon Garcia"
+    affiliation: "Swiss Data Science Center"
+  - id: james-runnalls
+    name: "James Runnalls"
+    affiliation: "EAWAG"
+  - id: anusch-bachofer
+    name: "Anusch Bachofer"
+    affiliation: "EMPA"
+  - id: jeremy-cohen
+    name: "Jeremy Cohen"
+    affiliation: "Imperial College London"
+  - id: andreas-meier
+    name: "Andreas Meier"
+    affiliation: "ETH Zurich"
+  - id: kai-michael-kammer
+    name: "Kai-Michael Kammer"
+    affiliation: "EAWAG"
+  - id: michelle-barker
+    name: "Michelle Barker"
+    affiliation: "Research Software Alliance"
+  - id: ali-khosravi
+    name: "Ali Khosravi"
+    affiliation: "PSI"
+  - id: samuel-gaist
+    name: "Samuel Gaist"
+    affiliation: "Idiap Research Institute"
+  - id: carine-dengler
+    name: "Carine Dengler"
+    affiliation: "EPFL"
+  - id: simon-durr
+    name: "Simon Dürr"
+    affiliation: "HES-SO Valais-Wallis"
+  - id: diego-antolinos
+    name: "Diego Antolinos"
+    affiliation: "Université de Neuchâtel"
+  - id: erik-frojdh
+    name: "Erik Fröjdh"
+    affiliation: "Paul Scherrer Institut"
+  - id: ben-ruijl
+    name: "Ben Ruijl"
+    affiliation: "Ruijl Research"
+  - id: rse-swiss-association
+    name: "rse.swiss Association"
+
+admins:
+  # Generate the hash with:  docker run --rm -it ghcr.io/c4dt/event-qa hash-password
+  - alias: admin
+    password: "$argon2id$v=19$m=65536,t=3,p=4$eGfcVVTF+HEc8gxjYg51Zw$KJtqaCy9M7bvucKT0gkxdwqL0ILnd+Z8biCoV4Jy+v8"
+
+tracks:
+  - id: keynotes-ai-reshaping
+    name: "Keynotes & AI Reshaping Research Software"
+    talks:
+      - id: welcome-coffee
+        type: slot
+        title: "Welcome Coffee"
+        start: 2026-08-31T09:00:00+02:00
+        duration_min: 60
+        room: main
+        qa: false
+
+      - id: opening
+        type: slot
+        title: "Opening Presentation"
+        start: 2026-08-31T10:00:00+02:00
+        duration_min: 15
+        room: main
+        qa: false
+
+      - id: keynote-agentic
+        title: "Keynote: Research Context Engineering - Agentic Development in RSE"
+        start: 2026-08-31T10:15:00+02:00
+        duration_min: 60
+        speakers: [markus-kreft]
+        room: g61
+
+      - id: ai-optimat-alloys
+        title: "OptiMat Alloys: a FAIR living database enabled by a conversational agent"
+        start: 2026-08-31T11:15:00+02:00
+        duration_min: 30
+        speakers: [yang-hu]
+        room: g61
+
+      - id: ai-lca-and-ai
+        title: "Life Cycle Assessment Data and the Advent of Artificial Intelligence"
+        start: 2026-08-31T11:45:00+02:00
+        duration_min: 30
+        speakers: [michael-weinold]
+        room: g61
+
+      - id: lunch
+        type: slot
+        title: "Lunch Break"
+        start: 2026-08-31T12:15:00+02:00
+        duration_min: 90
+        room: main
+        qa: false
+
+      - id: keynote-fair
+        title: "Keynote: FAIR Enough? Why Isn't More Data Being Reused?"
+        start: 2026-08-31T13:45:00+02:00
+        duration_min: 60
+        speakers: [james-runnalls]
+        room: g61
+
+      - id: ai-supplier-rating-app
+        title: "From Beginner to Builder: Supplier Rating App with an AI Coding Assistant"
+        start: 2026-08-31T14:45:00+02:00
+        duration_min: 30
+        speakers: [anusch-bachofer]
+        room: g61
+
+      - id: coffee-break
+        type: slot
+        title: "Coffee Break"
+        start: 2026-08-31T15:15:00+02:00
+        duration_min: 30
+        room: main
+        qa: false
+
+      - id: ai-rse-genai
+        title: "Research Software Engineering in the Age of Generative AI"
+        start: 2026-08-31T15:45:00+02:00
+        duration_min: 30
+        speakers: [michelle-barker]
+        room: g61
+
+      - id: ai-personalized-software
+        title: "The age of personalized software and how it might change research"
+        start: 2026-08-31T16:15:00+02:00
+        duration_min: 30
+        speakers: [simon-durr]
+        room: g61
+
+      - id: closing
+        type: slot
+        title: "Closing + Group Picture"
+        start: 2026-08-31T16:45:00+02:00
+        duration_min: 15
+        room: main
+        qa: false
+
+      - id: apero
+        type: slot
+        title: "Apéro"
+        start: 2026-08-31T17:00:00+02:00
+        duration_min: 60
+        room: main
+        qa: false
+
+  - id: rse-profession
+    name: "RSE Profession & Career"
+    talks:
+      - id: rse-industry-skills
+        title: "Developing software engineering 'industry skills' for graduates"
+        start: 2026-08-31T11:15:00+02:00
+        duration_min: 30
+        speakers: [ben-thomas]
+        room: g59
+
+      - id: rse-data-steward-survey
+        title: "Defining Data Steward and RSE Roles through a Task-Based Survey"
+        start: 2026-08-31T11:45:00+02:00
+        duration_min: 30
+        speakers: [stefanie-hauser]
+        room: g59
+
+      - id: rse-career-pathways-uk
+        title: "Developing career pathways for RSEs and dRTPs: A UK perspective"
+        start: 2026-08-31T14:45:00+02:00
+        duration_min: 30
+        speakers: [jeremy-cohen]
+        room: g59
+
+      - id: rse-code-is-cheap
+        title: "Code Is Cheap Now — Understanding Users Isn't"
+        start: 2026-08-31T15:45:00+02:00
+        duration_min: 30
+        speakers: [ali-khosravi]
+        room: g59
+
+      - id: rse-resin-network
+        title: "RésIn: local network of RSEs in Paris"
+        start: 2026-08-31T16:15:00+02:00
+        duration_min: 30
+        speakers: [diego-antolinos]
+        room: g59
+
+  - id: software-craft
+    name: "Software Craft & Engineering"
+    talks:
+      - id: craft-everse-project
+        title: "EVERSE Project: Tools and Resources for Research Software Quality"
+        start: 2026-08-31T11:15:00+02:00
+        duration_min: 30
+        speakers: [kenneth-rioja]
+        room: g56
+
+      - id: craft-sustainable-scientific-software
+        title: "Building Sustainable Scientific Software: Lessons from Industry–Academia"
+        start: 2026-08-31T11:45:00+02:00
+        duration_min: 30
+        speakers: [arnaud-mercier]
+        room: g56
+
+      - id: craft-ro-crate-schema-plus
+        title: "RO-Crate Schema Plus: Self-Describing, Ontologized RO-Crate"
+        start: 2026-08-31T14:45:00+02:00
+        duration_min: 30
+        speakers: [andreas-meier]
+        room: g56
+
+      - id: craft-short-and-terrible
+        title: "Why make it long and understandable when you can make it short and terrible?"
+        start: 2026-08-31T15:45:00+02:00
+        duration_min: 30
+        speakers: [samuel-gaist]
+        room: g56
+
+      - id: craft-case-for-rse
+        title: "The case for research software engineers"
+        start: 2026-08-31T16:15:00+02:00
+        duration_min: 30
+        speakers: [erik-frojdh]
+        room: g56
+
+  - id: platforms-applications
+    name: "Platforms & Applications"
+    talks:
+      - id: platforms-cryogenic-samples
+        title: "Storing cryogenic samples in ultra-high vacuum"
+        start: 2026-08-31T11:15:00+02:00
+        duration_min: 30
+        speakers: [reto-trappitsch]
+        room: g52
+
+      - id: platforms-renku
+        title: "Empowering sustainable research projects with Renku"
+        start: 2026-08-31T11:45:00+02:00
+        duration_min: 30
+        speakers: [elisabet-capon-garcia]
+        room: g52
+
+      - id: platforms-ntsuisse
+        title: "NTSuisse: a Web Platform for LC-HRMS Data of Swiss Surface Water"
+        start: 2026-08-31T14:45:00+02:00
+        duration_min: 30
+        speakers: [kai-michael-kammer]
+        room: g52
+
+      - id: platforms-matrix-epfl
+        title: "An open-source chat platform for independent research: Matrix at EPFL"
+        start: 2026-08-31T15:45:00+02:00
+        duration_min: 30
+        speakers: [carine-dengler]
+        room: g52
+
+      - id: platforms-symbolica
+        title: "Symbolica: a modern computer algebra system"
+        start: 2026-08-31T16:15:00+02:00
+        duration_min: 30
+        speakers: [ben-ruijl]
+        room: g52
+
+  - id: inauguration-meeting
+    name: "Inauguration Meeting"
+    talks:
+      - id: inauguration
+        title: "Inauguration Meeting rse.swiss Association"
+        start: 2026-08-31T16:15:00+02:00
+        duration_min: 30
+        speakers: [rse-swiss-association]
+        room: g57
+
+ratelimit:
+  posts_per_minute: 10

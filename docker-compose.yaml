@@ -11,3 +11,17 @@ services:
       LOG_LEVEL: info
     ports:
       - "127.0.0.1:3000:3000"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount registry credentials if registry.gitlab.com/rse-switzerland/event-qa is private:
+      # - ./config.json:/config.json
+    environment:
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_POLL_INTERVAL: "300"

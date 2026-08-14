@@ -14,7 +14,8 @@
       "dev": "pnpm dev",
       "test": "pnpm -r test",
       "lint": "pnpm -r lint",
-      "build": "pnpm -r build"
+      "build": "pnpm -r build",
+      "hash-password": "pnpm --filter @event-qa/backend exec tsx src/index.ts hash-password"
     }
   }
 }

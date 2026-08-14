@@ -1,6 +1,7 @@
 stages:
   - test
   - publish
+  - publish-variants
 
 test:
   stage: test
@@ -40,3 +41,26 @@ publish:
     - docker build --platform linux/amd64 -t "$CI_REGISTRY_IMAGE:latest" -t "$CI_REGISTRY_IMAGE:$SHORT_SHA" .
     - docker push "$CI_REGISTRY_IMAGE:latest"
     - docker push "$CI_REGISTRY_IMAGE:$SHORT_SHA"
+
+publish-rse-26:
+  stage: publish-variants
+  image: docker:27
+  services:
+    - docker:27-dind
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  variables:
+    DOCKER_TLS_CERTDIR: '/certs'
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - export SHORT_SHA=$(echo "$CI_COMMIT_SHA" | cut -c1-7)
+    - docker pull "$CI_REGISTRY_IMAGE:$SHORT_SHA"
+    - docker build --platform linux/amd64
+        --build-arg BASE_IMAGE="$CI_REGISTRY_IMAGE:$SHORT_SHA"
+        -f Dockerfile.rse-26
+        -t "$CI_REGISTRY_IMAGE/event-qa-rse-26:latest"
+        -t "$CI_REGISTRY_IMAGE/event-qa-rse-26:$SHORT_SHA"
+        .
+    - docker push "$CI_REGISTRY_IMAGE/event-qa-rse-26:latest"
+    - docker push "$CI_REGISTRY_IMAGE/event-qa-rse-26:$SHORT_SHA"
