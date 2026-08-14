@@ -46,3 +46,18 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   req.token = token;
   next();
 }
+
+// Like requireAuth, but lets anonymous requests through with req.user left unset.
+export function optionalAuth(req: Request, res: Response, next: NextFunction): void {
+  const ctx = req.ctx!;
+  const header = req.header('authorization') ?? '';
+  const m = /^Bearer\s+(\S+)$/.exec(header);
+  if (m) {
+    const user = ctx.auth.authenticate(m[1]!);
+    if (user) {
+      req.user = user;
+      req.token = m[1];
+    }
+  }
+  next();
+}

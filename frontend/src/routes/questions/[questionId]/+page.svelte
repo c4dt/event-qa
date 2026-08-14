@@ -8,6 +8,7 @@
   import type { Question, QuestionMessage, Schedule } from '$lib/types.js';
 
   $: questionId = Number($page.params.questionId);
+  $: loginHref = `/login?redirect=${encodeURIComponent($page.url.pathname)}`;
 
   let question: Question | null = null;
   let messages: QuestionMessage[] = [];
@@ -52,10 +53,15 @@
       question = data.question;
       messages = data.messages;
       schedule = sched;
-      await api.readQuestion(questionId);
-      unread.clearQuestion(questionId);
     } catch (err) {
       error = (err as Error).message;
+      return;
+    }
+    try {
+      await api.readQuestion(questionId);
+      unread.clearQuestion(questionId);
+    } catch {
+      // not logged in — nothing to mark as read
     }
   }
 
@@ -290,6 +296,13 @@
             Reply
           </button>
         </form>
+      </div>
+    {:else if $auth.status === 'anonymous'}
+      <div class="flex-shrink-0 pt-2">
+        <p class="text-sm text-gray-500">
+          <a href={loginHref} class="text-blue-600 hover:underline dark:text-blue-400">Log in</a>
+          to reply or vote.
+        </p>
       </div>
     {/if}
   </div>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import { auth } from '$lib/stores/auth.js';
   import { unread } from '$lib/stores/unread.js';
   import { api } from '$lib/api.js';
@@ -9,6 +10,7 @@
   import Markdown from '$lib/components/Markdown.svelte';
 
   $: talkId = $page.params.talkId ?? '';
+  $: loginHref = `/login?redirect=${encodeURIComponent($page.url.pathname)}`;
 
   let schedule: Schedule | null = null;
   let event: EventMeta | null = null;
@@ -50,6 +52,10 @@
   }
 
   async function toggleUpvote(q: Question) {
+    if ($auth.status !== 'authed') {
+      void goto(loginHref);
+      return;
+    }
     const { upvoted, vote_count } = await api.upvote(q.id);
     questions = questions.map((qv) =>
       qv.id === q.id ? { ...qv, vote_count, user_voted: upvoted ? 1 : 0 } : qv
@@ -143,6 +149,11 @@
       </form>
     {:else if $auth.status === 'authed'}
       <p class="mb-4 text-sm text-gray-500">Only admins can ask questions right now.</p>
+    {:else if $auth.status === 'anonymous'}
+      <p class="mb-4 text-sm text-gray-500">
+        <a href={loginHref} class="text-blue-600 hover:underline dark:text-blue-400">Log in</a>
+        to ask a question or upvote.
+      </p>
     {/if}
 
     {#if sortedQuestions(questions).length === 0}

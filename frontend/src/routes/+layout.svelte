@@ -50,7 +50,11 @@
     }
   }
 
-  $: if ($auth.status === 'anonymous' && $page.url.pathname !== '/login') {
+  function isPublicPath(pathname: string): boolean {
+    return pathname === '/login' || pathname.startsWith('/talks/') || pathname.startsWith('/questions/');
+  }
+
+  $: if ($auth.status === 'anonymous' && !isPublicPath($page.url.pathname)) {
     void goto('/login');
   }
 </script>

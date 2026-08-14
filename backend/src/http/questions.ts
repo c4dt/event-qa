@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { requireAuth } from './context.js';
+import { requireAuth, optionalAuth } from './context.js';
 import { getBoolSetting } from '../settings.js';
 import type { WebSocketServer } from 'ws';
 
@@ -16,14 +16,13 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
   }
 
   const talksRouter: Router = Router();
-  talksRouter.use(requireAuth);
 
   // GET /api/talks/:talkId/questions
-  talksRouter.get('/:talkId/questions', (req, res) => {
+  talksRouter.get('/:talkId/questions', optionalAuth, (req, res) => {
     const { db } = req.ctx!;
     const { talkId } = req.params;
-    const userId = req.user!.id;
-    const isAdmin = req.user!.is_admin === 1;
+    const userId = req.user?.id ?? 0;
+    const isAdmin = req.user?.is_admin === 1;
     const questions = db
       .prepare<[number, string], {
         id: number; talk_id: string; author_id: number; title: string;
@@ -41,7 +40,7 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
          GROUP BY q.id
          ORDER BY vote_count DESC, q.created_at ASC`,
       )
-      .all(userId, talkId);
+      .all(userId, talkId!);
     res.json({ questions });
   });
 
@@ -50,7 +49,7 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
   });
 
   // POST /api/talks/:talkId/questions
-  talksRouter.post('/:talkId/questions', (req, res) => {
+  talksRouter.post('/:talkId/questions', requireAuth, (req, res) => {
     const { db, cfg, ratelimit } = req.ctx!;
     const { talkId } = req.params;
     const user = req.user!;
@@ -97,14 +96,13 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
   });
 
   const questionsRouter: Router = Router();
-  questionsRouter.use(requireAuth);
 
   // GET /api/questions/:id
-  questionsRouter.get('/:id', (req, res) => {
+  questionsRouter.get('/:id', optionalAuth, (req, res) => {
     const { db } = req.ctx!;
     const id = Number(req.params.id);
-    const userId = req.user!.id;
-    const isAdmin = req.user!.is_admin === 1;
+    const userId = req.user?.id ?? 0;
+    const isAdmin = req.user?.is_admin === 1;
 
     const question = db
       .prepare<[number, number], { id: number; talk_id: string; author_id: number; title: string; created_at: number; hidden: number; answered: number; vote_count: number; user_voted: number; author_alias: string; message_count: number }>(
@@ -134,7 +132,9 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
       )
       .all(id);
 
-    db.prepare('INSERT OR IGNORE INTO watches (user_id, question_id) VALUES (?, ?)').run(userId, id);
+    if (req.user) {
+      db.prepare('INSERT OR IGNORE INTO watches (user_id, question_id) VALUES (?, ?)').run(userId, id);
+    }
     res.json({ question, messages });
   });
 
@@ -143,7 +143,7 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
   });
 
   // PATCH /api/questions/:id — author can edit their own question's title
-  questionsRouter.patch('/:id', (req, res) => {
+  questionsRouter.patch('/:id', requireAuth, (req, res) => {
     const { db } = req.ctx!;
     const id = Number(req.params.id);
     const user = req.user!;
@@ -194,7 +194,7 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
   });
 
   // POST /api/questions/:id/messages
-  questionsRouter.post('/:id/messages', (req, res) => {
+  questionsRouter.post('/:id/messages', requireAuth, (req, res) => {
     const { db, ratelimit } = req.ctx!;
     const id = Number(req.params.id);
     const user = req.user!;
@@ -251,7 +251,7 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
   });
 
   // POST /api/questions/:id/upvote (toggle)
-  questionsRouter.post('/:id/upvote', (req, res) => {
+  questionsRouter.post('/:id/upvote', requireAuth, (req, res) => {
     const { db } = req.ctx!;
     const id = Number(req.params.id);
     const user = req.user!;
@@ -297,7 +297,7 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
   });
 
   // POST /api/questions/:id/read
-  questionsRouter.post('/:id/read', (req, res) => {
+  questionsRouter.post('/:id/read', requireAuth, (req, res) => {
     const { db } = req.ctx!;
     const id = Number(req.params.id);
     const user = req.user!;

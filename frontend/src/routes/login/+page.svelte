@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { auth } from '$lib/stores/auth.js';
   import { ApiCallError, getStoredAlias } from '$lib/api.js';
 
@@ -29,7 +30,8 @@
         affiliation: affiliation || undefined,
         bio: bio || undefined,
       });
-      await goto('/');
+      const redirect = $page.url.searchParams.get('redirect');
+      await goto(redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/');
     } catch (err) {
       if (err instanceof ApiCallError) {
         error = humanise(err.body.error);
