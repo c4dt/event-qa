@@ -64,9 +64,14 @@
   const ROW_MIN = 5;
   // Pixel height of one grid row.
   const ROW_PX = 20;
-  // A break that fills every track (nothing else running) is capped to this many
-  // rows — its box only needs to fit its text, not its real-world duration.
+  // A session that fills every track (nothing else running) is capped to this
+  // many rows — its box only needs to fit its text, not its real-world
+  // duration. Breaks stay short and full-width, so their text needs little
+  // room; a solo talk (e.g. a keynote) stays in its own narrow track column
+  // and carries a title plus speaker name, so it needs more room to avoid
+  // clipping.
   const BREAK_ROW_CAP = 3;
+  const SOLO_TALK_ROW_CAP = 8;
 
   type Day = {
     date: string;
@@ -91,26 +96,27 @@
     return Array.from(dayMap.values()).map((rawTalks) => {
       rawTalks.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 
-      // A break/slot only fills every track column when nothing else is running
-      // during it — if a talk overlaps it in another track, keep it confined to
-      // its own track column so it doesn't cover up concurrent sessions.
+      // Any session — break or talk — only fills every track column when
+      // nothing else is running during it. If something overlaps it in
+      // another track, keep it confined to its own track column so it
+      // doesn't cover up concurrent sessions.
       const spansAllTracks = new Map<string, boolean>();
       for (const t of rawTalks) {
-        if (t.type !== 'slot') continue;
         const tStart = Date.parse(t.start);
         const tEnd = tStart + t.duration_min * 60_000;
-        const overlapsTalk = rawTalks.some((other) => {
-          if (other === t || other.type !== 'talk') return false;
+        const overlapsOther = rawTalks.some((other) => {
+          if (other === t) return false;
           const oStart = Date.parse(other.start);
           const oEnd = oStart + other.duration_min * 60_000;
           return oStart < tEnd && oEnd > tStart;
         });
-        spansAllTracks.set(t.id, !overlapsTalk);
+        spansAllTracks.set(t.id, !overlapsOther);
       }
 
       // Map real clock time to grid rows, compressing stretches where only a
-      // full-width break is running — those only need rows enough for their
-      // text, not their real duration — while keeping talk time proportional.
+      // single full-width session (break or keynote) is running — those only
+      // need rows enough for their text, not their real duration — while
+      // keeping talk time proportional whenever tracks run in parallel.
       const boundaries = Array.from(
         new Set(rawTalks.flatMap((t) => [Date.parse(t.start), Date.parse(t.start) + t.duration_min * 60_000]))
       ).sort((a, b) => a - b);
@@ -122,14 +128,14 @@
         const segStart = boundaries[i];
         const segEnd = boundaries[i + 1];
         const realRows = Math.max(1, Math.round((segEnd - segStart) / (ROW_MIN * 60_000)));
-        const breakOnly = rawTalks.every((t) => {
+        const active = rawTalks.filter((t) => {
           const tStart = Date.parse(t.start);
           const tEnd = tStart + t.duration_min * 60_000;
-          const active = tStart < segEnd && tEnd > segStart;
-          if (!active) return true;
-          return t.type === 'slot' && (spansAllTracks.get(t.id) ?? false);
+          return tStart < segEnd && tEnd > segStart;
         });
-        cumRows += breakOnly ? Math.min(realRows, BREAK_ROW_CAP) : realRows;
+        const soloSession = active.every((t) => spansAllTracks.get(t.id) ?? false);
+        const cap = active.some((t) => t.type !== 'slot') ? SOLO_TALK_ROW_CAP : BREAK_ROW_CAP;
+        cumRows += soloSession ? Math.min(realRows, cap) : realRows;
         rowAt.set(segEnd, cumRows);
       }
 
@@ -170,8 +176,9 @@
   }
 
   function talkGridStyle(talk: GridTalk): string {
-    if (talk.spansAllTracks) {
-      // Breaks with nothing running concurrently fill every track column.
+    if (talk.type === 'slot' && talk.spansAllTracks) {
+      // Breaks with nothing running concurrently fill every track column —
+      // unlike talks, they aren't tied to a specific room.
       return `grid-column: 2 / -1; grid-row: ${talk.gridRowStart} / span ${talk.gridRowSpan};`;
     }
 
