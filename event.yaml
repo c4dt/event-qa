@@ -105,6 +105,9 @@ speakers:
   - id: ben-ruijl
     name: "Ben Ruijl"
     affiliation: "Ruijl Research"
+  - id: uwe-schmitt
+    name: "Uwe Schmitt"
+    affiliation: "ETH Zurich"
   - id: rse-swiss-association
     name: "rse.swiss Association"
 
@@ -126,12 +129,11 @@ tracks:
         qa: false
 
       - id: opening
-        type: slot
         title: "Opening Presentation"
         start: 2026-08-31T10:00:00+02:00
         duration_min: 15
-        room: main
-        qa: false
+        speakers: [uwe-schmitt]
+        room: g61
 
       - id: keynote-agentic
         title: "Keynote: Research Context Engineering - Agentic Development in RSE"
