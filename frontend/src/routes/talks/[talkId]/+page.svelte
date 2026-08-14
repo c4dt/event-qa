@@ -6,6 +6,7 @@
   import { api } from '$lib/api.js';
   import { addWsHandler, subscribeChannel, unsubscribeChannel } from '$lib/ws.js';
   import type { EventMeta, Question, Schedule, Talk, Speaker } from '$lib/types.js';
+  import Markdown from '$lib/components/Markdown.svelte';
 
   $: talkId = $page.params.talkId ?? '';
 
@@ -115,7 +116,9 @@
       </p>
     {/if}
     {#if talk.description}
-      <p class="mt-2 text-gray-700 dark:text-gray-300">{talk.description}</p>
+      <div class="mt-2 text-gray-700 dark:text-gray-300">
+        <Markdown source={talk.description} />
+      </div>
     {/if}
   </div>
 
