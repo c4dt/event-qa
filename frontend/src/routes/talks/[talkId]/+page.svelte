@@ -150,10 +150,15 @@
     {:else if $auth.status === 'authed'}
       <p class="mb-4 text-sm text-gray-500">Only admins can ask questions right now.</p>
     {:else if $auth.status === 'anonymous'}
-      <p class="mb-4 text-sm text-gray-500">
-        <a href={loginHref} class="text-blue-600 hover:underline dark:text-blue-400">Log in</a>
-        to ask a question or upvote.
-      </p>
+      <div class="mb-4 flex items-center gap-3 rounded border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/40">
+        <a
+          href={loginHref}
+          class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          Log in
+        </a>
+        <span class="text-sm text-gray-600 dark:text-gray-300">to ask a question or upvote.</span>
+      </div>
     {/if}
 
     {#if sortedQuestions(questions).length === 0}

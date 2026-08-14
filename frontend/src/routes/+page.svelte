@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { auth } from '$lib/stores/auth.js';
   import { api } from '$lib/api.js';
   import type { Schedule, Talk, Track } from '$lib/types.js';
 
@@ -194,9 +193,7 @@
   }
 </script>
 
-{#if $auth.status !== 'authed'}
-  <p>Loading…</p>
-{:else if loadError}
+{#if loadError}
   <p class="text-red-600">Could not load schedule: {loadError}</p>
 {:else if schedule}
   {@const days = buildDays(schedule)}

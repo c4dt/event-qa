@@ -3,6 +3,7 @@
   import { unread } from '../stores/unread.js';
   import { theme } from '../stores/theme.js';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
 
   export let eventName: string = 'Event Q&A';
 
@@ -53,6 +54,13 @@
       >
         Log out
       </button>
+    {:else if $auth.status === 'anonymous'}
+      <a
+        href={`/login?redirect=${encodeURIComponent($page.url.pathname)}`}
+        class="rounded bg-blue-600 px-3 py-1 font-medium text-white hover:bg-blue-700"
+      >
+        Log in
+      </a>
     {/if}
   </nav>
 </header>

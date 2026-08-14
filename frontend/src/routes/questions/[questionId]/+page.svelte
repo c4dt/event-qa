@@ -299,10 +299,15 @@
       </div>
     {:else if $auth.status === 'anonymous'}
       <div class="flex-shrink-0 pt-2">
-        <p class="text-sm text-gray-500">
-          <a href={loginHref} class="text-blue-600 hover:underline dark:text-blue-400">Log in</a>
-          to reply or vote.
-        </p>
+        <div class="flex items-center gap-3 rounded border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/40">
+          <a
+            href={loginHref}
+            class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Log in
+          </a>
+          <span class="text-sm text-gray-600 dark:text-gray-300">to reply or vote.</span>
+        </div>
       </div>
     {/if}
   </div>

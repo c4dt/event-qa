@@ -51,7 +51,12 @@
   }
 
   function isPublicPath(pathname: string): boolean {
-    return pathname === '/login' || pathname.startsWith('/talks/') || pathname.startsWith('/questions/');
+    return (
+      pathname === '/' ||
+      pathname === '/login' ||
+      pathname.startsWith('/talks/') ||
+      pathname.startsWith('/questions/')
+    );
   }
 
   $: if ($auth.status === 'anonymous' && !isPublicPath($page.url.pathname)) {
