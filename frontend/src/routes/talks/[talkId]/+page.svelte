@@ -25,6 +25,7 @@
   let postingChat = false;
   let chatListEl: HTMLUListElement;
   let chatInputEl: HTMLInputElement;
+  let questionInputEl: HTMLInputElement;
 
   $: talk = schedule?.tracks.flatMap((tr) => tr.talks).find((t) => t.id === talkId) ?? null;
   $: qaEnabled = talk ? (talk.type !== 'slot' && (talk.qa ?? true)) : false;
@@ -63,6 +64,19 @@
     } catch (err) {
       error = (err as Error).message;
     }
+  }
+
+  // Chat is for informal conversation; a question-shaped message typed there
+  // probably belongs in the Questions list instead, where it can be answered/upvoted.
+  $: chatLooksLikeQuestion =
+    qaEnabled && canAsk && newChatBody.trim().length > 3 && newChatBody.trim().endsWith('?');
+
+  async function moveChatDraftToQuestions() {
+    newTitle = newChatBody.trim();
+    newChatBody = '';
+    await tick();
+    document.getElementById('questions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    questionInputEl?.focus();
   }
 
   async function postChatMessage() {
@@ -196,11 +210,15 @@
   </div>
 
   {#if qaEnabled}
-    <h2 class="mb-3 text-lg font-medium">Questions</h2>
+  <section id="questions" class="rounded-lg border border-indigo-200 bg-indigo-50/40 p-4 dark:border-indigo-800 dark:bg-indigo-950/20">
+    <h2 class="mb-3 flex items-center gap-2 text-lg font-medium">
+      <span aria-hidden="true">❓</span> Questions
+    </h2>
 
     {#if $auth.status === 'authed' && canAsk}
       <form class="mb-4 flex gap-2" on:submit|preventDefault={postQuestion}>
         <input
+          bind:this={questionInputEl}
           bind:value={newTitle}
           placeholder="Ask a question…"
           class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
@@ -298,12 +316,15 @@
         {/each}
       </ul>
     {/if}
+  </section>
   {:else}
     <p class="text-sm text-gray-500">Q&A is not enabled for this session.</p>
   {/if}
 
-  <div id="chat" class="mt-6">
-    <h2 class="mb-3 text-lg font-medium">Chat</h2>
+  <div id="chat" class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
+    <h2 class="mb-3 flex items-center gap-2 text-lg font-medium">
+      <span aria-hidden="true">💬</span> Chat
+    </h2>
 
     {#if $auth.status === 'authed'}
       <ul
@@ -345,6 +366,18 @@
           </li>
         {/each}
       </ul>
+      {#if chatLooksLikeQuestion}
+        <div class="mb-2 flex items-center justify-between gap-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+          <span>Looks like a question for the speaker — post it in <strong>Questions</strong> so it can be answered and upvoted?</span>
+          <button
+            type="button"
+            class="shrink-0 rounded bg-amber-600 px-2 py-1 font-medium text-white hover:bg-amber-700"
+            on:click={moveChatDraftToQuestions}
+          >
+            Move to Questions
+          </button>
+        </div>
+      {/if}
       <form class="flex gap-2" on:submit|preventDefault={postChatMessage}>
         <input
           bind:this={chatInputEl}
