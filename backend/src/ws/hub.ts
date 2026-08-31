@@ -16,7 +16,7 @@ const IDLE_KILL_AFTER_MS = 40_000;
 // Channels a client may subscribe/unsubscribe to over the wire.
 // Per-user channels (dm:<id>, user:<id>) are added server-side at auth time
 // so users cannot snoop on other users' streams.
-const CLIENT_SUBSCRIBABLE = /^(talk|question):[A-Za-z0-9_-]+$/;
+const CLIENT_SUBSCRIBABLE = /^(talk|question|room):[A-Za-z0-9_-]+$/;
 
 function isClientSubscribable(channel: string): boolean {
   return CLIENT_SUBSCRIBABLE.test(channel);

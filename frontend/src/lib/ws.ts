@@ -1,11 +1,13 @@
 import { writable } from 'svelte/store';
-import type { Question, QuestionMessage, DmMessage, PublicUser } from './types.js';
+import type { Question, QuestionMessage, DmMessage, ChatFeedItem, PublicUser } from './types.js';
 
 export type WsEvent =
   | { type: 'question.new'; talkId: string; question: Question }
   | { type: 'question.update'; question: Question }
   | { type: 'question.message'; questionId: number; message: QuestionMessage }
   | { type: 'dm.new'; peerAlias: string; message: DmMessage }
+  | { type: 'room.message'; room: string; message: ChatFeedItem }
+  | { type: 'chat.message'; talkId: string; message: ChatFeedItem }
   | { type: 'user.update'; user: PublicUser }
   | { type: 'presence'; alias: string; online: boolean };
 

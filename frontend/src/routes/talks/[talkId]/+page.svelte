@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { auth } from '$lib/stores/auth.js';
   import { unread } from '$lib/stores/unread.js';
   import { api } from '$lib/api.js';
   import { addWsHandler, subscribeChannel, unsubscribeChannel } from '$lib/ws.js';
-  import type { EventMeta, Question, Schedule, Talk, Speaker } from '$lib/types.js';
+  import type { EventMeta, Question, Schedule, Talk, Speaker, ChatFeedItem } from '$lib/types.js';
   import Markdown from '$lib/components/Markdown.svelte';
 
   $: talkId = $page.params.talkId ?? '';
@@ -19,6 +19,12 @@
   let posting = false;
   let error: string | null = null;
 
+  let chatMessages: ChatFeedItem[] = [];
+  let newChatBody = '';
+  let postingChat = false;
+  let chatListEl: HTMLUListElement;
+  let chatInputEl: HTMLInputElement;
+
   $: talk = schedule?.tracks.flatMap((tr) => tr.talks).find((t) => t.id === talkId) ?? null;
   $: qaEnabled = talk ? (talk.type !== 'slot' && (talk.qa ?? true)) : false;
   $: talkSpeakers = (schedule && talk)
@@ -27,14 +33,54 @@
 
   async function load() {
     try {
-      [schedule, event, { questions }] = await Promise.all([
+      const [sched, ev, { questions: qs }] = await Promise.all([
         api.schedule(),
         api.event(),
         api.talkQuestions(talkId),
       ]);
+      schedule = sched;
+      event = ev;
+      questions = qs;
+      if ($auth.status === 'authed') {
+        chatMessages = (await api.getTalkChat(talkId)).messages;
+      }
     } catch (err) {
       error = (err as Error).message;
     }
+  }
+
+  async function postChatMessage() {
+    if (!newChatBody.trim()) return;
+    postingChat = true;
+    try {
+      const { message } = await api.sendTalkChat(talkId, newChatBody.trim());
+      if (!chatMessages.find((m) => chatKey(m) === chatKey(message))) {
+        chatMessages = [...chatMessages, message];
+      }
+      newChatBody = '';
+    } catch (err) {
+      error = (err as Error).message;
+    } finally {
+      postingChat = false;
+    }
+    await tick();
+    chatListEl?.scrollTo({ top: chatListEl.scrollHeight });
+    chatInputEl?.focus();
+  }
+
+  function fmtTime(ts: number): string {
+    return new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function chatKey(item: ChatFeedItem): string {
+    return `${item.source}:${item.id}`;
+  }
+
+  // Q&A replies bubbled up into this talk's chat still link to their own thread.
+  function chatLinkFor(item: ChatFeedItem): { href: string; label: string } | null {
+    return item.source === 'question'
+      ? { href: `/questions/${item.question_id}`, label: `↳ ${item.question_title}` }
+      : null;
   }
 
   async function postQuestion() {
@@ -69,8 +115,10 @@
 
   onMount(async () => {
     await load();
+    await tick();
+    chatListEl?.scrollTo({ top: chatListEl.scrollHeight });
     subscribeChannel(`talk:${talkId}`);
-    removeHandler = addWsHandler((ev) => {
+    removeHandler = addWsHandler(async (ev) => {
       if (ev.type === 'question.new' && ev.talkId === talkId) {
         if (!questions.find((q) => q.id === ev.question.id)) {
           questions = [ev.question, ...questions];
@@ -85,6 +133,15 @@
           }
         } else if (isAdmin && ev.question.talk_id === talkId) {
           questions = [ev.question, ...questions];
+        }
+      } else if (ev.type === 'chat.message' && ev.talkId === talkId) {
+        if (!chatMessages.find((m) => chatKey(m) === chatKey(ev.message))) {
+          const atBottom = chatListEl
+            ? chatListEl.scrollTop + chatListEl.clientHeight >= chatListEl.scrollHeight - 8
+            : true;
+          chatMessages = [...chatMessages, ev.message];
+          await tick();
+          if (atBottom) chatListEl?.scrollTo({ top: chatListEl.scrollHeight });
         }
       }
     });
@@ -234,4 +291,70 @@
   {:else}
     <p class="text-sm text-gray-500">Q&A is not enabled for this session.</p>
   {/if}
+
+  <div id="chat" class="mt-6">
+    <h2 class="mb-3 text-lg font-medium">Chat</h2>
+
+    {#if $auth.status === 'authed'}
+      <ul
+        bind:this={chatListEl}
+        class="mb-3 max-h-96 space-y-2 overflow-y-auto rounded border border-gray-200 p-3 dark:border-gray-700"
+      >
+        {#if chatMessages.length === 0}
+          <li class="text-sm text-gray-400">No messages yet.</li>
+        {/if}
+        {#each chatMessages as msg (chatKey(msg))}
+          {@const isMe = msg.author_alias === $auth.user.alias}
+          {@const link = chatLinkFor(msg)}
+          <li class="flex {isMe ? 'justify-end' : 'justify-start'}">
+            <svelte:element
+              this={link ? 'a' : 'div'}
+              href={link?.href}
+              class="max-w-md rounded-lg px-3 py-2 text-sm
+                {link ? 'border hover:opacity-80' : ''}
+                {isMe
+                  ? `bg-blue-600 text-white ${link ? 'border-blue-700' : ''}`
+                  : `bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100 ${link ? 'border-gray-200 dark:border-gray-700' : ''}`}"
+            >
+              {#if link}
+                <div class="mb-1 text-xs opacity-70">{link.label}</div>
+              {/if}
+              <div>{msg.body}</div>
+              <div class="mt-0.5 flex items-center gap-1 text-xs opacity-60">
+                <span>{msg.author_alias}</span>
+                <span>·</span>
+                <span>{fmtTime(msg.created_at)}</span>
+              </div>
+            </svelte:element>
+          </li>
+        {/each}
+      </ul>
+      <form class="flex gap-2" on:submit|preventDefault={postChatMessage}>
+        <input
+          bind:this={chatInputEl}
+          bind:value={newChatBody}
+          placeholder="Message everyone at this talk…"
+          class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+          disabled={postingChat}
+        />
+        <button
+          type="submit"
+          class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+          disabled={postingChat || !newChatBody.trim()}
+        >
+          Send
+        </button>
+      </form>
+    {:else}
+      <div class="flex items-center gap-3 rounded border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/40">
+        <a
+          href={loginHref}
+          class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          Log in
+        </a>
+        <span class="text-sm text-gray-600 dark:text-gray-300">to join this talk's chat.</span>
+      </div>
+    {/if}
+  </div>
 {/if}

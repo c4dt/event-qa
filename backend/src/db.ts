@@ -49,6 +49,16 @@ CREATE TABLE IF NOT EXISTS upvotes (
   PRIMARY KEY (question_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS room_messages (
+  id          INTEGER PRIMARY KEY,
+  room        TEXT NOT NULL,
+  author_id   INTEGER NOT NULL REFERENCES users(id),
+  body        TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  hidden      INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS room_messages_room ON room_messages(room, created_at);
+
 CREATE TABLE IF NOT EXISTS dm_messages (
   id          INTEGER PRIMARY KEY,
   user_a      INTEGER NOT NULL REFERENCES users(id),

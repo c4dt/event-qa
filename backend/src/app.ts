@@ -8,6 +8,7 @@ import { eventRouter } from './http/schedule.js';
 import { usersRouter } from './http/users.js';
 import { makeQuestionsRouters } from './http/questions.js';
 import { makeDmsRouters } from './http/dms.js';
+import { makeRoomsRouter } from './http/rooms.js';
 import { makeAdminRouter } from './http/admin.js';
 
 export type AppOptions = {
@@ -26,6 +27,7 @@ export function createApp(ctx: AppCtx, opts: AppOptions = {}): Express {
 
   const { talksRouter, questionsRouter } = makeQuestionsRouters(opts.wss);
   const { dmsRouter, unreadRouter } = makeDmsRouters(opts.wss);
+  const { roomsRouter } = makeRoomsRouter(opts.wss);
   const adminRouter = makeAdminRouter(opts.wss);
 
   app.use('/api/auth', authRouter);
@@ -35,6 +37,7 @@ export function createApp(ctx: AppCtx, opts: AppOptions = {}): Express {
   app.use('/api/talks', talksRouter);
   app.use('/api/questions', questionsRouter);
   app.use('/api/dm', dmsRouter);
+  app.use('/api/rooms', roomsRouter);
   app.use('/api/unread', unreadRouter);
   app.use('/api/admin', adminRouter);
 

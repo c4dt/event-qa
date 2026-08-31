@@ -221,6 +221,124 @@ describe('dms', () => {
   });
 });
 
+// ─── rooms (general chat) ───────────────────────────────────────────────────
+
+describe('rooms', () => {
+  it('GET /api/rooms/general starts empty', async () => {
+    const r = await request(app).get('/api/rooms/general').set(auth(tokenAlice));
+    expect(r.status).toBe(200);
+    expect(r.body.messages).toEqual([]);
+  });
+
+  it('POST sends a general chat message and it appears on GET', async () => {
+    const post = await request(app)
+      .post('/api/rooms/general')
+      .set(auth(tokenAlice))
+      .send({ body: 'Hello everyone!' });
+    expect(post.status).toBe(201);
+    expect(post.body.message.source).toBe('general');
+
+    const r = await request(app).get('/api/rooms/general').set(auth(tokenBob));
+    expect(r.body.messages).toHaveLength(1);
+    expect(r.body.messages[0].body).toBe('Hello everyone!');
+  });
+
+  it('GET /api/rooms/talks/:talkId starts empty and 404s for unknown talks', async () => {
+    const r = await request(app).get('/api/rooms/talks/talk1').set(auth(tokenAlice));
+    expect(r.status).toBe(200);
+    expect(r.body.messages).toEqual([]);
+
+    const missing = await request(app).get('/api/rooms/talks/nope').set(auth(tokenAlice));
+    expect(missing.status).toBe(404);
+  });
+
+  it('a talk chat message shows up in that talk\'s room and in the general feed', async () => {
+    const post = await request(app)
+      .post('/api/rooms/talks/talk1')
+      .set(auth(tokenBob))
+      .send({ body: 'hi from the talk chat' });
+    expect(post.status).toBe(201);
+    expect(post.body.message.source).toBe('talk');
+    expect(post.body.message.talk_id).toBe('talk1');
+
+    const talkFeed = await request(app).get('/api/rooms/talks/talk1').set(auth(tokenAlice));
+    expect(talkFeed.body.messages).toHaveLength(1);
+    expect(talkFeed.body.messages[0].body).toBe('hi from the talk chat');
+
+    const general = await request(app).get('/api/rooms/general').set(auth(tokenAlice));
+    expect(general.body.messages).toHaveLength(1);
+    expect(general.body.messages[0].source).toBe('talk');
+    expect(general.body.messages[0].talk_id).toBe('talk1');
+    expect(general.body.messages[0].talk_title).toBe('Hello World');
+  });
+
+  it('POST to an unknown talk chat is 404', async () => {
+    const r = await request(app).post('/api/rooms/talks/nope').set(auth(tokenAlice)).send({ body: 'x' });
+    expect(r.status).toBe(404);
+  });
+
+  it('a message posted only to the general room does not appear in any talk chat', async () => {
+    await request(app).post('/api/rooms/general').set(auth(tokenBob)).send({ body: 'off topic chat' });
+
+    const r = await request(app).get('/api/rooms/talks/talk1').set(auth(tokenAlice));
+    expect(r.body.messages).toEqual([]);
+  });
+
+  it('a Q&A reply bubbles up into its talk chat and the general feed, linked to its thread', async () => {
+    const post = await request(app)
+      .post('/api/talks/talk1/questions')
+      .set(auth(tokenAlice))
+      .send({ title: 'Q?' });
+    const id = post.body.question.id as number;
+
+    await request(app)
+      .post(`/api/questions/${id}/messages`)
+      .set(auth(tokenBob))
+      .send({ body: 'Good question!' });
+
+    const talkFeed = await request(app).get('/api/rooms/talks/talk1').set(auth(tokenAlice));
+    expect(talkFeed.body.messages).toHaveLength(1);
+    expect(talkFeed.body.messages[0].source).toBe('question');
+    expect(talkFeed.body.messages[0].question_id).toBe(id);
+    expect(talkFeed.body.messages[0].body).toBe('Good question!');
+
+    const general = await request(app).get('/api/rooms/general').set(auth(tokenAlice));
+    expect(general.body.messages).toHaveLength(1);
+    expect(general.body.messages[0].source).toBe('question');
+    expect(general.body.messages[0].question_id).toBe(id);
+    expect(general.body.messages[0].talk_id).toBe('talk1');
+    expect(general.body.messages[0].talk_title).toBe('Hello World');
+  });
+
+  it('a hidden Q&A reply does not appear in either chat feed', async () => {
+    const post = await request(app)
+      .post('/api/talks/talk1/questions')
+      .set(auth(tokenAlice))
+      .send({ title: 'Q?' });
+    const id = post.body.question.id as number;
+
+    const msg = await request(app)
+      .post(`/api/questions/${id}/messages`)
+      .set(auth(tokenBob))
+      .send({ body: 'Good question!' });
+    const msgId = msg.body.message.id as number;
+
+    const now = Date.now();
+    db.prepare(
+      `INSERT INTO users (alias, password_hash, created_at, is_admin) VALUES ('admin2', NULL, ?, 1)`,
+    ).run(now);
+    const adminUser = db.prepare<[string], { id: number }>('SELECT id FROM users WHERE alias = ?').get('admin2')!;
+    const adminToken = 'admin2-token';
+    db.prepare(
+      'INSERT INTO sessions (token, user_id, created_at, expires_at, last_seen) VALUES (?, ?, ?, ?, ?)',
+    ).run(adminToken, adminUser.id, now, now + 86400_000, now);
+    await request(app).delete(`/api/admin/messages/${msgId}`).set(auth(adminToken));
+
+    const general = await request(app).get('/api/rooms/general').set(auth(tokenAlice));
+    expect(general.body.messages).toEqual([]);
+  });
+});
+
 // ─── unread ───────────────────────────────────────────────────────────────────
 
 describe('unread', () => {

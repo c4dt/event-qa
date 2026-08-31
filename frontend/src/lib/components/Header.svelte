@@ -21,6 +21,9 @@
     {#if $auth.status === 'authed' && $auth.user.is_admin}
       <a href="/admin" class="hover:underline">Settings</a>
     {/if}
+    {#if $auth.status === 'authed'}
+      <a href="/chat" class="hover:underline">Chat</a>
+    {/if}
     <a href="/users" class="hover:underline">Users</a>
     {#if totalDms > 0}
       <a href="/users" class="hover:underline" title="Unread direct messages">

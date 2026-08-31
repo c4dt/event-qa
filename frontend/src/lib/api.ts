@@ -1,6 +1,6 @@
 import type {
   ApiError, EventMeta, LoginInput, PublicUser, Schedule,
-  Question, QuestionMessage, DmMessage, UnreadCounts, UserWithActivity,
+  Question, QuestionMessage, DmMessage, ChatFeedItem, UnreadCounts, UserWithActivity,
 } from './types.js';
 
 const TOKEN_KEY = 'eventqa.token';
@@ -91,6 +91,12 @@ export const api = {
   sendDm: (alias: string, body: string) =>
     call<{ message: DmMessage }>('POST', `/api/dm/${alias}`, { body }),
   readDm: (alias: string) => call<{ ok: true }>('POST', `/api/dm/${alias}/read`),
+
+  getGeneralChat: () => call<{ messages: ChatFeedItem[] }>('GET', '/api/rooms/general'),
+  sendGeneralChat: (body: string) => call<{ message: ChatFeedItem }>('POST', '/api/rooms/general', { body }),
+  getTalkChat: (talkId: string) => call<{ messages: ChatFeedItem[] }>('GET', `/api/rooms/talks/${talkId}`),
+  sendTalkChat: (talkId: string, body: string) =>
+    call<{ message: ChatFeedItem }>('POST', `/api/rooms/talks/${talkId}`, { body }),
 
   unread: () => call<UnreadCounts>('GET', '/api/unread'),
 

@@ -77,6 +77,19 @@ export type DmMessage = {
   created_at: number;
 };
 
+export type ChatFeedItem = {
+  id: number;
+  source: 'general' | 'talk' | 'question';
+  author_id: number;
+  author_alias: string;
+  body: string;
+  created_at: number;
+  talk_id?: string;
+  talk_title?: string;
+  question_id?: number;
+  question_title?: string;
+};
+
 export type LoginInput = {
   alias: string;
   password?: string;

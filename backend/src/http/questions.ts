@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth, optionalAuth } from './context.js';
 import { getBoolSetting } from '../settings.js';
+import { chatItemFromQuestionMessage } from './rooms.js';
 import type { WebSocketServer } from 'ws';
 
 export function makeQuestionsRouters(wss?: WebSocketServer) {
@@ -195,12 +196,14 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
 
   // POST /api/questions/:id/messages
   questionsRouter.post('/:id/messages', requireAuth, (req, res) => {
-    const { db, ratelimit } = req.ctx!;
+    const { db, cfg, ratelimit } = req.ctx!;
     const id = Number(req.params.id);
     const user = req.user!;
 
     const question = db
-      .prepare<[number], { id: number; talk_id: string; hidden: number }>('SELECT id, talk_id, hidden FROM questions WHERE id = ?')
+      .prepare<[number], { id: number; talk_id: string; title: string; hidden: number }>(
+        'SELECT id, talk_id, title, hidden FROM questions WHERE id = ?',
+      )
       .get(id);
     if (!question || question.hidden) {
       res.status(404).json({ error: 'not_found' });
@@ -245,8 +248,25 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
       )
       .get(id)!;
 
+    const chatItem = chatItemFromQuestionMessage(
+      {
+        id: message.id,
+        author_id: message.author_id,
+        author_alias: message.author_alias,
+        body: message.body,
+        created_at: message.created_at,
+        question_id: id,
+        talk_id: question.talk_id,
+        question_title: question.title,
+      },
+      cfg,
+    );
+
     broadcast(`question:${id}`, { type: 'question.message', questionId: id, message });
     broadcast(`talk:${question.talk_id}`, { type: 'question.update', question: updatedQuestion });
+    // A Q&A reply also shows up in its talk's chat and the general chat feed.
+    broadcast(`talk:${question.talk_id}`, { type: 'chat.message', talkId: question.talk_id, message: chatItem });
+    broadcast('room:general', { type: 'room.message', room: 'general', message: chatItem });
     res.status(201).json({ message });
   });
 
