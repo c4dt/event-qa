@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth, optionalAuth } from './context.js';
 import { getBoolSetting } from '../settings.js';
-import { chatItemFromQuestionMessage } from './rooms.js';
+import { chatItemFromQuestionMessage, chatItemFromQuestion } from './rooms.js';
 import type { WebSocketServer } from 'ws';
 
 export function makeQuestionsRouters(wss?: WebSocketServer) {
@@ -93,6 +93,12 @@ export function makeQuestionsRouters(wss?: WebSocketServer) {
       .get(id)!;
 
     broadcast(`talk:${talkId}`, { type: 'question.new', talkId, question });
+    // The question itself (not a reply) also shows up in the general chat feed.
+    broadcast('room:general', {
+      type: 'room.message',
+      room: 'general',
+      message: chatItemFromQuestion(question, cfg),
+    });
     res.status(201).json({ question });
   });
 

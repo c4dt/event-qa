@@ -79,7 +79,7 @@ export type DmMessage = {
 
 export type ChatFeedItem = {
   id: number;
-  source: 'general' | 'talk' | 'question';
+  source: 'general' | 'talk' | 'question' | 'question_new';
   author_id: number;
   author_alias: string;
   body: string;

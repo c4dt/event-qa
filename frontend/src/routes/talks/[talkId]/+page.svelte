@@ -6,6 +6,7 @@
   import { unread } from '$lib/stores/unread.js';
   import { api } from '$lib/api.js';
   import { addWsHandler, subscribeChannel, unsubscribeChannel } from '$lib/ws.js';
+  import { chatFeedKey, chatFeedBadge } from '$lib/chatFeed.js';
   import type { EventMeta, Question, Schedule, Talk, Speaker, ChatFeedItem } from '$lib/types.js';
   import Markdown from '$lib/components/Markdown.svelte';
 
@@ -41,9 +42,24 @@
       schedule = sched;
       event = ev;
       questions = qs;
-      if ($auth.status === 'authed') {
-        chatMessages = (await api.getTalkChat(talkId)).messages;
-      }
+    } catch (err) {
+      error = (err as Error).message;
+    }
+  }
+
+  // The root layout resolves auth asynchronously, so `$auth.status` is still
+  // 'unknown' when this page's onMount runs — load chat once it settles.
+  let chatLoadedFor: string | null = null;
+  $: if ($auth.status === 'authed' && talkId && chatLoadedFor !== talkId) {
+    chatLoadedFor = talkId;
+    void loadChat();
+  }
+
+  async function loadChat() {
+    try {
+      chatMessages = (await api.getTalkChat(talkId)).messages;
+      await tick();
+      chatListEl?.scrollTo({ top: chatListEl.scrollHeight });
     } catch (err) {
       error = (err as Error).message;
     }
@@ -54,7 +70,7 @@
     postingChat = true;
     try {
       const { message } = await api.sendTalkChat(talkId, newChatBody.trim());
-      if (!chatMessages.find((m) => chatKey(m) === chatKey(message))) {
+      if (!chatMessages.find((m) => chatFeedKey(m) === chatFeedKey(message))) {
         chatMessages = [...chatMessages, message];
       }
       newChatBody = '';
@@ -72,14 +88,10 @@
     return new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   }
 
-  function chatKey(item: ChatFeedItem): string {
-    return `${item.source}:${item.id}`;
-  }
-
   // Q&A replies bubbled up into this talk's chat still link to their own thread.
   function chatLinkFor(item: ChatFeedItem): { href: string; label: string } | null {
     return item.source === 'question'
-      ? { href: `/questions/${item.question_id}`, label: `↳ ${item.question_title}` }
+      ? { href: `/questions/${item.question_id}`, label: item.question_title ?? '' }
       : null;
   }
 
@@ -115,8 +127,6 @@
 
   onMount(async () => {
     await load();
-    await tick();
-    chatListEl?.scrollTo({ top: chatListEl.scrollHeight });
     subscribeChannel(`talk:${talkId}`);
     removeHandler = addWsHandler(async (ev) => {
       if (ev.type === 'question.new' && ev.talkId === talkId) {
@@ -135,7 +145,7 @@
           questions = [ev.question, ...questions];
         }
       } else if (ev.type === 'chat.message' && ev.talkId === talkId) {
-        if (!chatMessages.find((m) => chatKey(m) === chatKey(ev.message))) {
+        if (!chatMessages.find((m) => chatFeedKey(m) === chatFeedKey(ev.message))) {
           const atBottom = chatListEl
             ? chatListEl.scrollTop + chatListEl.clientHeight >= chatListEl.scrollHeight - 8
             : true;
@@ -303,9 +313,10 @@
         {#if chatMessages.length === 0}
           <li class="text-sm text-gray-400">No messages yet.</li>
         {/if}
-        {#each chatMessages as msg (chatKey(msg))}
+        {#each chatMessages as msg (chatFeedKey(msg))}
           {@const isMe = msg.author_alias === $auth.user.alias}
           {@const link = chatLinkFor(msg)}
+          {@const badge = chatFeedBadge(msg, isMe)}
           <li class="flex {isMe ? 'justify-end' : 'justify-start'}">
             <svelte:element
               this={link ? 'a' : 'div'}
@@ -316,9 +327,14 @@
                   ? `bg-blue-600 text-white ${link ? 'border-blue-700' : ''}`
                   : `bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100 ${link ? 'border-gray-200 dark:border-gray-700' : ''}`}"
             >
-              {#if link}
-                <div class="mb-1 text-xs opacity-70">{link.label}</div>
-              {/if}
+              <div class="mb-1 flex items-center gap-1.5">
+                <span class="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase {badge.classes}">
+                  {badge.label}
+                </span>
+                {#if link}
+                  <span class="min-w-0 truncate text-xs opacity-70">{link.label}</span>
+                {/if}
+              </div>
               <div>{msg.body}</div>
               <div class="mt-0.5 flex items-center gap-1 text-xs opacity-60">
                 <span>{msg.author_alias}</span>

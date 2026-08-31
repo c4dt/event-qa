@@ -303,11 +303,10 @@ describe('rooms', () => {
     expect(talkFeed.body.messages[0].body).toBe('Good question!');
 
     const general = await request(app).get('/api/rooms/general').set(auth(tokenAlice));
-    expect(general.body.messages).toHaveLength(1);
-    expect(general.body.messages[0].source).toBe('question');
-    expect(general.body.messages[0].question_id).toBe(id);
-    expect(general.body.messages[0].talk_id).toBe('talk1');
-    expect(general.body.messages[0].talk_title).toBe('Hello World');
+    const reply = general.body.messages.find((m: { source: string }) => m.source === 'question');
+    expect(reply.question_id).toBe(id);
+    expect(reply.talk_id).toBe('talk1');
+    expect(reply.talk_title).toBe('Hello World');
   });
 
   it('a hidden Q&A reply does not appear in either chat feed', async () => {
@@ -333,6 +332,46 @@ describe('rooms', () => {
       'INSERT INTO sessions (token, user_id, created_at, expires_at, last_seen) VALUES (?, ?, ?, ?, ?)',
     ).run(adminToken, adminUser.id, now, now + 86400_000, now);
     await request(app).delete(`/api/admin/messages/${msgId}`).set(auth(adminToken));
+
+    const general = await request(app).get('/api/rooms/general').set(auth(tokenAlice));
+    expect(general.body.messages.some((m: { source: string }) => m.source === 'question')).toBe(false);
+  });
+
+  it('a newly-asked question shows up in the general feed without creating a chat message', async () => {
+    const post = await request(app)
+      .post('/api/talks/talk1/questions')
+      .set(auth(tokenAlice))
+      .send({ title: 'What time is lunch?' });
+    const id = post.body.question.id as number;
+
+    const general = await request(app).get('/api/rooms/general').set(auth(tokenAlice));
+    expect(general.body.messages).toHaveLength(1);
+    expect(general.body.messages[0].source).toBe('question_new');
+    expect(general.body.messages[0].question_id).toBe(id);
+    expect(general.body.messages[0].talk_id).toBe('talk1');
+    expect(general.body.messages[0].body).toBe('What time is lunch?');
+
+    const { count } = db.prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM room_messages').get()!;
+    expect(count).toBe(0);
+  });
+
+  it('a hidden question does not appear in the general feed', async () => {
+    const post = await request(app)
+      .post('/api/talks/talk1/questions')
+      .set(auth(tokenAlice))
+      .send({ title: 'Q?' });
+    const id = post.body.question.id as number;
+
+    const now = Date.now();
+    db.prepare(
+      `INSERT INTO users (alias, password_hash, created_at, is_admin) VALUES ('admin3', NULL, ?, 1)`,
+    ).run(now);
+    const adminUser = db.prepare<[string], { id: number }>('SELECT id FROM users WHERE alias = ?').get('admin3')!;
+    const adminToken = 'admin3-token';
+    db.prepare(
+      'INSERT INTO sessions (token, user_id, created_at, expires_at, last_seen) VALUES (?, ?, ?, ?, ?)',
+    ).run(adminToken, adminUser.id, now, now + 86400_000, now);
+    await request(app).delete(`/api/admin/questions/${id}`).set(auth(adminToken));
 
     const general = await request(app).get('/api/rooms/general').set(auth(tokenAlice));
     expect(general.body.messages).toEqual([]);

@@ -14,7 +14,7 @@ const TALK_ROOM_PREFIX = 'talk:';
 
 export type ChatFeedItem = {
   id: number;
-  source: 'general' | 'talk' | 'question';
+  source: 'general' | 'talk' | 'question' | 'question_new';
   author_id: number;
   author_alias: string;
   body: string;
@@ -36,6 +36,15 @@ type QuestionMessageRow = {
   question_id: number;
   talk_id: string;
   question_title: string;
+};
+
+type NewQuestionRow = {
+  id: number;
+  talk_id: string;
+  title: string;
+  author_id: number;
+  author_alias: string;
+  created_at: number;
 };
 
 function talkTitle(cfg: EventConfig, talkId: string): string {
@@ -64,6 +73,26 @@ const questionMessageSelect = `SELECT m.id, m.author_id, u.alias AS author_alias
    FROM question_messages m
    JOIN questions q ON q.id = m.question_id
    JOIN users u ON u.id = m.author_id`;
+
+// A newly-asked question itself (not a reply) — read straight from the
+// questions table, no chat message is ever written for this.
+export function chatItemFromQuestion(row: NewQuestionRow, cfg: EventConfig): ChatFeedItem {
+  return {
+    id: row.id,
+    source: 'question_new',
+    author_id: row.author_id,
+    author_alias: row.author_alias,
+    body: row.title,
+    created_at: row.created_at,
+    talk_id: row.talk_id,
+    talk_title: talkTitle(cfg, row.talk_id),
+    question_id: row.id,
+    question_title: row.title,
+  };
+}
+
+const newQuestionSelect = `SELECT q.id, q.talk_id, q.title, q.author_id, q.created_at, u.alias AS author_alias
+   FROM questions q JOIN users u ON u.id = q.author_id`;
 
 export function makeRoomsRouter(wss?: WebSocketServer) {
   function broadcast(channel: string, payload: unknown) {
@@ -97,17 +126,21 @@ export function makeRoomsRouter(wss?: WebSocketServer) {
   const messageSelect = `SELECT m.id, m.room, m.author_id, m.body, m.created_at, u.alias AS author_alias
      FROM room_messages m JOIN users u ON u.id = m.author_id`;
 
-  // GET /api/rooms/general — every room's messages plus every talk's Q&A
-  // replies, merged and time-sorted.
+  // GET /api/rooms/general — every room's messages, every talk's Q&A
+  // replies, and every newly-asked question, merged and time-sorted.
   roomsRouter.get('/general', (req, res) => {
     const { db, cfg } = req.ctx!;
     const roomRows = db.prepare<[], MessageRow>(`${messageSelect} WHERE m.hidden = 0 ORDER BY m.created_at ASC`).all();
     const questionRows = db
       .prepare<[], QuestionMessageRow>(`${questionMessageSelect} WHERE m.hidden = 0 AND q.hidden = 0 ORDER BY m.created_at ASC`)
       .all();
+    const newQuestionRows = db
+      .prepare<[], NewQuestionRow>(`${newQuestionSelect} WHERE q.hidden = 0 ORDER BY q.created_at ASC`)
+      .all();
     const messages: ChatFeedItem[] = [
       ...roomRows.map((r) => rowToItem(r, cfg)),
       ...questionRows.map((r) => chatItemFromQuestionMessage(r, cfg)),
+      ...newQuestionRows.map((r) => chatItemFromQuestion(r, cfg)),
     ].sort((a, b) => a.created_at - b.created_at);
     res.json({ messages });
   });
