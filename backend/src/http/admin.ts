@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
+import argon2 from 'argon2';
 import { requireAuth } from './context.js';
 import type { DB } from '../db.js';
 import type { WebSocketServer } from 'ws';
@@ -146,6 +147,36 @@ export function makeAdminRouter(wss?: WebSocketServer): Router {
     }
     db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').run(newIsAdmin, user.id);
     res.json({ is_admin: !!newIsAdmin });
+  });
+
+  const adminSetPasswordBody = z.object({
+    password: z.string().min(1).max(256),
+  });
+
+  // POST /api/admin/users/:alias/password — set a user's password
+  adminRouter.post('/users/:alias/password', async (req, res) => {
+    const { db, cfg } = req.ctx!;
+    const user = db.prepare<[string], { id: number }>('SELECT id FROM users WHERE alias = ? COLLATE NOCASE').get(req.params.alias);
+    if (!user) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    const isConfigAdmin = cfg.admins.some((a) => a.alias.toLowerCase() === req.params.alias.toLowerCase());
+    if (isConfigAdmin) {
+      // Password is fixed in event.yaml and re-applied by syncAdmins on every
+      // restart, so changing it here would silently revert on the next deploy.
+      res.status(409).json({ error: 'config_managed_password' });
+      return;
+    }
+    const parsed = adminSetPasswordBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'invalid_body', issues: parsed.error.issues });
+      return;
+    }
+    const hash = await argon2.hash(parsed.data.password, { type: argon2.argon2id });
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, user.id);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(user.id);
+    res.json({ ok: true });
   });
 
   // POST /api/admin/settings/allow-non-admin-questions — toggle

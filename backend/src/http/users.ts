@@ -8,10 +8,11 @@ usersRouter.use(requireAuth);
 // GET /api/users — list with counts + last_seen
 // Admins also see banned users (so they can unban them).
 usersRouter.get('/', (req, res) => {
-  const { db } = req.ctx!;
+  const { db, cfg } = req.ctx!;
   const me = req.user!;
   const isAdmin = me.is_admin === 1;
   const whereClause = isAdmin ? '' : 'WHERE u.banned = 0';
+  const configAdminAliases = new Set(cfg.admins.map((a) => a.alias.toLowerCase()));
   const rows = db
     .prepare<[number, number], {
       id: number; alias: string; name: string | null; affiliation: string | null;
@@ -39,6 +40,7 @@ usersRouter.get('/', (req, res) => {
     last_seen: r.last_seen ?? null,
     question_count: r.question_count,
     dm_count: r.dm_count,
+    password_locked: configAdminAliases.has(r.alias.toLowerCase()),
   }));
   res.json({ users });
 });

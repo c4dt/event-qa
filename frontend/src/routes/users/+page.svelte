@@ -23,6 +23,17 @@
     }
   }
 
+  async function changePassword(alias: string) {
+    adminActionError = null;
+    const password = window.prompt(`New password for ${alias}:`);
+    if (!password) return;
+    try {
+      await api.adminSetUserPassword(alias, password);
+    } catch (err) {
+      adminActionError = (err as Error).message;
+    }
+  }
+
   const PRESENCE_WINDOW = 60_000;
 
   function isOnline(u: UserWithActivity): boolean {
@@ -123,6 +134,13 @@
                 users = users.map((v) => v.alias === u.alias ? { ...v, banned } : v);
               }}
             >{u.banned ? 'unban' : 'ban'}</button>
+          {/if}
+          {#if $auth.status === 'authed' && $auth.user.is_admin && !u.password_locked}
+            <button
+              type="button"
+              class="text-xs text-gray-500 hover:underline"
+              on:click|stopPropagation={() => changePassword(u.alias)}
+            >change password</button>
           {/if}
         </div>
       </li>
