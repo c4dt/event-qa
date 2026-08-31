@@ -6,6 +6,16 @@
   let schedule: Schedule | null = null;
   let loadError: string | null = null;
 
+  // Drives the "currently active" highlight; ticks so it stays correct as talks start/end.
+  let now = Date.now();
+  let mobileTalkEls: Record<string, HTMLLIElement> = {};
+  let scrolledToActive = false;
+
+  onMount(() => {
+    const timer = setInterval(() => (now = Date.now()), 30_000);
+    return () => clearInterval(timer);
+  });
+
   onMount(async () => {
     try {
       schedule = await api.schedule();
@@ -13,6 +23,19 @@
       loadError = (err as Error).message;
     }
   });
+
+  function isActive(talk: Talk, now: number): boolean {
+    const start = Date.parse(talk.start);
+    return now >= start && now < start + talk.duration_min * 60_000;
+  }
+
+  $: activeTalkId = schedule ? flatTalks(schedule).find((t) => isActive(t, now))?.id ?? null : null;
+
+  // Once the active talk's element is rendered, jump the mobile list to it.
+  $: if (activeTalkId && mobileTalkEls[activeTalkId] && !scrolledToActive) {
+    scrolledToActive = true;
+    mobileTalkEls[activeTalkId].scrollIntoView({ block: 'start' });
+  }
 
   function fmtTime(iso: string): string {
     return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
@@ -203,7 +226,12 @@
   <ul class="space-y-2 lg:hidden">
     {#each flatTalks(schedule) as talk (talk.id)}
       {#if talk.type === 'talk' && (talk.qa ?? true)}
-        <li class="relative rounded border border-gray-200 p-3 dark:border-gray-700">
+        <li
+          bind:this={mobileTalkEls[talk.id]}
+          class="relative rounded border p-3 {isActive(talk, now)
+            ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50 dark:bg-blue-950/40'
+            : 'border-gray-200 dark:border-gray-700'}"
+        >
           <a href={`/talks/${talk.id}`} class="absolute inset-0 z-0" aria-label={talk.title}></a>
           <div class="relative z-10 pointer-events-none flex items-baseline justify-between gap-2">
             <span class="text-lg font-medium min-w-0 flex-1">{talk.title}</span>
@@ -218,7 +246,12 @@
           </div>
         </li>
       {:else}
-        <li class="rounded border border-gray-200 p-3 dark:border-gray-700">
+        <li
+          bind:this={mobileTalkEls[talk.id]}
+          class="rounded border p-3 {isActive(talk, now)
+            ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50 dark:bg-blue-950/40'
+            : 'border-gray-200 dark:border-gray-700'}"
+        >
           <div class="flex items-baseline justify-between gap-2">
             <span class="text-lg font-medium text-gray-500 min-w-0 flex-1">{talk.title}</span>
             <span class="text-sm text-gray-500 shrink-0 whitespace-nowrap">{fmtTime(talk.start)}</span>
@@ -280,7 +313,9 @@
             {#if talk.type === 'talk' && (talk.qa ?? true)}
               <a
                 href={`/talks/${talk.id}`}
-                class="block rounded border p-2 text-sm bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 overflow-hidden"
+                class="block rounded border p-2 text-sm bg-white dark:bg-gray-900 overflow-hidden {isActive(talk, now)
+                  ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50 dark:bg-blue-950/40'
+                  : 'border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600'}"
                 style={talkGridStyle(talk)}
               >
                 <span class="font-medium">{talk.title}</span>
@@ -291,7 +326,9 @@
               </a>
             {:else}
               <div
-                class="flex items-center justify-center gap-2 rounded border p-2 text-sm bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700 overflow-hidden"
+                class="flex items-center justify-center gap-2 rounded border p-2 text-sm overflow-hidden {isActive(talk, now)
+                  ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50 dark:bg-blue-950/40 text-gray-700 dark:text-gray-200'
+                  : 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700'}"
                 style={talkGridStyle(talk)}
               >
                 <span class="font-medium">{talk.title}</span>
