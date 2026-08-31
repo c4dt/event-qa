@@ -6,7 +6,7 @@
   import { unread } from '$lib/stores/unread.js';
   import { api } from '$lib/api.js';
   import { addWsHandler, subscribeChannel, unsubscribeChannel } from '$lib/ws.js';
-  import { chatFeedKey, chatFeedBadge } from '$lib/chatFeed.js';
+  import { chatFeedKey, chatFeedBadge, chatGroupKey, groupChatFeed } from '$lib/chatFeed.js';
   import type { EventMeta, Question, Schedule, Talk, Speaker, ChatFeedItem } from '$lib/types.js';
   import Markdown from '$lib/components/Markdown.svelte';
 
@@ -21,6 +21,7 @@
   let error: string | null = null;
 
   let chatMessages: ChatFeedItem[] = [];
+  $: chatGroups = groupChatFeed(chatMessages, { groupTalks: false });
   let newChatBody = '';
   let postingChat = false;
   let chatListEl: HTMLUListElement;
@@ -280,6 +281,7 @@
                 {#if q.message_count > 0}
                   <span title="replies">💬 {q.message_count}</span>
                 {/if}
+                <span class="ml-auto">{fmtTime(q.created_at)}</span>
               </div>
             </div>
 
@@ -334,36 +336,64 @@
         {#if chatMessages.length === 0}
           <li class="text-sm text-gray-400">No messages yet.</li>
         {/if}
-        {#each chatMessages as msg (chatFeedKey(msg))}
-          {@const isMe = msg.author_alias === $auth.user.alias}
-          {@const link = chatLinkFor(msg)}
-          {@const badge = chatFeedBadge(msg, isMe)}
-          <li class="flex {isMe ? 'justify-end' : 'justify-start'}">
-            <svelte:element
-              this={link ? 'a' : 'div'}
-              href={link?.href}
-              class="max-w-md rounded-lg px-3 py-2 text-sm
-                {link ? 'border hover:opacity-80' : ''}
-                {isMe
-                  ? `bg-blue-600 text-white ${link ? 'border-blue-700' : ''}`
-                  : `bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100 ${link ? 'border-gray-200 dark:border-gray-700' : ''}`}"
-            >
-              <div class="mb-1 flex items-center gap-1.5">
-                <span class="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase {badge.classes}">
-                  {badge.label}
-                </span>
-                {#if link}
-                  <span class="min-w-0 truncate text-xs opacity-70">{link.label}</span>
-                {/if}
-              </div>
-              <div>{msg.body}</div>
-              <div class="mt-0.5 flex items-center gap-1 text-xs opacity-60">
-                <span>{msg.author_alias}</span>
-                <span>·</span>
-                <span>{fmtTime(msg.created_at)}</span>
-              </div>
-            </svelte:element>
-          </li>
+        {#each chatGroups as group (chatGroupKey(group))}
+          {#if group.kind === 'message'}
+            {@const msg = group.item}
+            {@const isMe = msg.author_alias === $auth.user.alias}
+            {@const link = chatLinkFor(msg)}
+            {@const badge = chatFeedBadge(msg, isMe)}
+            <li class="flex {isMe ? 'justify-end' : 'justify-start'}">
+              <svelte:element
+                this={link ? 'a' : 'div'}
+                href={link?.href}
+                class="max-w-md rounded-lg px-3 py-2 text-sm
+                  {link ? 'border hover:opacity-80' : ''}
+                  {isMe
+                    ? `bg-blue-600 text-white ${link ? 'border-blue-700' : ''}`
+                    : `bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100 ${link ? 'border-gray-200 dark:border-gray-700' : ''}`}"
+              >
+                <div class="mb-1 flex items-center gap-1.5">
+                  <span class="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase {badge.classes}">
+                    {badge.label}
+                  </span>
+                  {#if link}
+                    <span class="min-w-0 truncate text-xs opacity-70">{link.label}</span>
+                  {/if}
+                </div>
+                <div>{msg.body}</div>
+                <div class="mt-0.5 flex items-center gap-1 text-xs opacity-60">
+                  <span>{msg.author_alias}</span>
+                  <span class="ml-auto">{fmtTime(msg.created_at)}</span>
+                </div>
+              </svelte:element>
+            </li>
+          {:else if group.kind === 'question'}
+            {@const askedAt = group.askedAt ?? questions.find((q) => q.id === group.questionId)?.created_at}
+            <li class="flex justify-start">
+              <a
+                href={`/questions/${group.questionId}`}
+                class="max-w-md rounded-lg border border-purple-200 bg-purple-50/60 px-3 py-2 text-sm hover:opacity-80 dark:border-purple-800 dark:bg-purple-950/20"
+              >
+                <div class="mb-1 flex items-center gap-1.5">
+                  <span class="shrink-0 whitespace-nowrap rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">
+                    Question
+                  </span>
+                </div>
+                <div class="flex items-baseline gap-1.5">
+                  <span class="font-medium text-gray-900 dark:text-gray-100">{group.questionTitle}</span>
+                  {#if askedAt}<span class="ml-auto shrink-0 text-xs opacity-50">{fmtTime(askedAt)}</span>{/if}
+                </div>
+                <ul class="mt-1.5 space-y-1 border-t border-purple-200/60 pt-1.5 dark:border-purple-800/60">
+                  {#each group.items.filter((i) => i.source === 'question') as reply (reply.id)}
+                    <li class="flex items-baseline gap-2 text-xs text-gray-700 dark:text-gray-300">
+                      <span class="min-w-0"><span class="opacity-70">{reply.author_alias}:</span> {reply.body}</span>
+                      <span class="ml-auto shrink-0 opacity-50">{fmtTime(reply.created_at)}</span>
+                    </li>
+                  {/each}
+                </ul>
+              </a>
+            </li>
+          {/if}
         {/each}
       </ul>
       {#if chatLooksLikeQuestion}

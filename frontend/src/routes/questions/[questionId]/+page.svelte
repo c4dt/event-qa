@@ -217,6 +217,7 @@
               answered
             </span>
           {/if}
+          <span class="ml-auto">{fmtTime(question.created_at)}</span>
         </div>
       </div>
 
@@ -239,12 +240,11 @@
                 <div class="text-sm">{msg.body}</div>
                 <div class="mt-1 flex items-center gap-2 text-xs text-gray-400">
                   <a href={userHref(msg.author_alias)} class="hover:underline">{msg.author_alias}</a>
-                  <span>·</span>
-                  <span>{fmtTime(msg.created_at)}</span>
+                  <span class="ml-auto">{fmtTime(msg.created_at)}</span>
                   {#if $auth.status === 'authed' && $auth.user.is_admin}
                     <button
                       type="button"
-                      class="ml-2 text-red-500 hover:underline"
+                      class="text-red-500 hover:underline"
                       on:click={async () => {
                         await api.adminHideMessage(msg.id);
                         messages = messages.filter((m) => m.id !== msg.id);
