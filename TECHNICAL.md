@@ -143,9 +143,18 @@ end-to-end Playwright tests are out of scope for v1.
 
 ### `event.yaml` format
 
-Loaded once at server startup from `EVENT_CONFIG` (default
-`/data/event.yaml`). The file is validated with `zod`; an invalid file
-makes the server refuse to start with a clear error.
+Loaded at server startup from `EVENT_CONFIG` (default `/data/event.yaml`),
+which may be a local file path or an `http(s)://` URL — a `github.com`
+"blob" URL is automatically rewritten to the equivalent
+`raw.githubusercontent.com` URL. The file is validated with `zod`; an
+invalid file at startup makes the server refuse to start with a clear
+error.
+
+The source is re-read/re-fetched periodically (`EVENT_CONFIG_REFRESH`,
+default `5m`) and hot-swapped in place — no restart needed to pick up an
+edit, whether it's a local file or a URL. If a refresh produces an
+unreachable source or an invalid file, the server logs a warning and keeps
+serving the last-known-good config instead of crashing.
 
 ```yaml
 event:
@@ -202,18 +211,19 @@ prompts for a password and prints the argon2id hash to paste into the
 yaml.
 
 ```bash
-docker run --rm -it registry.gitlab.com/rse-switzerland/event-qa hash-password
+docker run --rm -it ghcr.io/your-org/event-qa hash-password
 ```
 
 ### Environment variables
 
-| Var            | Default              | Purpose                                |
-|----------------|----------------------|----------------------------------------|
-| `EVENT_CONFIG` | `/data/event.yaml`   | Path to the event yaml                 |
-| `DB_PATH`      | `/data/event-qa.db`  | SQLite file                            |
-| `PORT`         | `3000`               | HTTP port                              |
-| `LOG_LEVEL`    | `info`               | `debug` / `info` / `warn` / `error`    |
-| `SESSION_TTL`  | `30d`                | Session token lifetime                 |
+| Var                    | Default              | Purpose                                                     |
+|------------------------|----------------------|---------------------------------------------------------------|
+| `EVENT_CONFIG`         | `/data/event.yaml`   | Path or `http(s)://` URL to the event yaml (GitHub blob URLs auto-convert to raw) |
+| `EVENT_CONFIG_REFRESH` | `5m`                 | How often to re-read/re-fetch `EVENT_CONFIG`; `0` disables periodic refresh |
+| `DB_PATH`              | `/data/event-qa.db`  | SQLite file                                                    |
+| `PORT`                 | `3000`               | HTTP port                                                      |
+| `LOG_LEVEL`            | `info`               | `debug` / `info` / `warn` / `error`                            |
+| `SESSION_TTL`          | `30d`                | Session token lifetime                                         |
 
 ## Data model
 
@@ -459,7 +469,7 @@ DB (idempotent UPSERT/DELETE).
 # docker-compose.yaml
 services:
   event-qa:
-    image: registry.gitlab.com/rse-switzerland/event-qa:latest
+    image: ${EVENT_QA_IMAGE:-ghcr.io/your-org/event-qa:latest}
     restart: unless-stopped
     volumes:
       - ./data:/data        # holds event.yaml and event-qa.db
@@ -484,28 +494,61 @@ Multi-stage:
 Persistent state: just the `/data` volume. SQLite is opened with
 `PRAGMA journal_mode=WAL` for concurrent reads while the server writes.
 
-## CI/CD (GitLab CI)
+## CI/CD (GitLab CI + GitHub Actions)
 
-Defined in `.gitlab-ci.yml`, two stages:
+The `test` and `publish` steps are implemented once in `scripts/ci-test.sh`
+and `scripts/ci-publish.sh`. Both `.gitlab-ci.yml` and
+`.github/workflows/ci.yml` call these scripts — each platform's YAML only
+handles triggers and registry authentication, so the two pipelines can't
+drift apart.
 
-### `test` — on every push to `main` and every MR
+### `test` — on every push to `main` and every MR/PR
 
-- Set up Node 22 and pnpm via corepack.
+`scripts/ci-test.sh`:
+- Set up pnpm via corepack.
 - `pnpm install --frozen-lockfile`.
 - Typecheck the backend, `pnpm -r test`, `pnpm -r build`.
 - Fails the job on any error.
 
 ### `publish` — on push to `main`
 
-- Build the multi-stage Dockerfile using `docker:dind`.
-- Tag as `$CI_REGISTRY_IMAGE:latest` and `$CI_REGISTRY_IMAGE:<short-sha>`
-  (i.e. `registry.gitlab.com/rse-switzerland/event-qa`).
-- Push to the GitLab Container Registry using the built-in
-  `CI_REGISTRY_USER` / `CI_REGISTRY_PASSWORD` credentials.
+`scripts/ci-publish.sh` (given `IMAGE` and `SHORT_SHA` env vars, and an
+already-authenticated `docker login`):
+- Build the multi-stage Dockerfile.
+- Tag as `$IMAGE:latest` and `$IMAGE:<short-sha>`.
+- Push both tags.
 - Single-arch (`linux/amd64`) for v1; multi-arch can be added later.
 
+GitLab CI authenticates with the built-in `CI_REGISTRY_USER` /
+`CI_REGISTRY_PASSWORD` and sets `IMAGE=$CI_REGISTRY_IMAGE`. GitHub Actions
+authenticates to `ghcr.io` with the built-in `GITHUB_TOKEN` and sets
+`IMAGE=ghcr.io/<owner>/<repo>`.
+
 Tag-based releases (e.g., `v1.2.3`) are out of scope for v1 and can be
-added by extending `publish.yaml` to also push `:1.2.3`.
+added by extending `ci-publish.sh` to also push `:1.2.3`.
+
+### Baking event config into a variant image
+
+Some deployments want a self-contained image that runs without a mounted
+config file (e.g. for a one-off event where the deployer doesn't want to
+manage a bind mount). Build one on top of the published base image:
+
+```dockerfile
+ARG BASE_IMAGE=ghcr.io/your-org/event-qa:latest
+FROM ${BASE_IMAGE}
+COPY --chown=app:app event.yaml /app/event.yaml
+ENV EVENT_CONFIG=/app/event.yaml
+```
+
+Build it with `--build-arg BASE_IMAGE=<published base tag>` and publish the
+result under its own image name/tag. This pattern (and the CI job that used
+to do this for one specific event) isn't part of the generic template — add
+it in your own fork/deployment repo if you need it.
+
+For most events, pointing `EVENT_CONFIG` at a URL (see "Environment
+variables" above) is simpler than baking a variant image: editing the file
+in its repo takes effect within one refresh interval, with no CI/Docker
+rebuild step at all.
 
 ## Security notes
 

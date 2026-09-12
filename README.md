@@ -55,7 +55,7 @@ The server listens on port `3000` and stores state in `./data`
 To generate an argon2id password hash for an admin entry:
 
 ```bash
-docker run --rm -it registry.gitlab.com/rse-switzerland/event-qa hash-password
+docker run --rm -it ghcr.io/your-org/event-qa hash-password
 ```
 
 ## Configuration
@@ -108,8 +108,13 @@ tracks:
         room: main
 ```
 
-The config is loaded once at server startup; to change it, edit the
-file and restart the container. The full schema and validation rules
+The config is re-read periodically (every 5 minutes by default), so
+editing `data/event.yaml` takes effect without restarting the container.
+`EVENT_CONFIG` can also point at an `http(s)://` URL instead of a local
+file — e.g. a `github.com` link to `event.yaml` in its own repo, which is
+auto-converted to the raw file URL — so an admin can update the event by
+editing that file rather than touching the deployment at all. The full
+schema, validation rules, and `EVENT_CONFIG`/`EVENT_CONFIG_REFRESH` options
 are documented in
 [TECHNICAL.md](./TECHNICAL.md#eventyaml-format).
 

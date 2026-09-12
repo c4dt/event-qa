@@ -11,11 +11,14 @@
   import Footer from '$lib/components/Footer.svelte';
 
   let eventName = 'Event Q&A';
+  let repoUrl: string | null = null;
   let removeWsHandler: (() => void) | null = null;
 
   onMount(async () => {
     try {
-      eventName = (await api.event()).name;
+      const event = await api.event();
+      eventName = event.name;
+      repoUrl = event.repo_url;
     } catch {
       // ignore
     }
@@ -69,5 +72,5 @@
   <main class="flex-1 p-4">
     <slot />
   </main>
-  <Footer />
+  <Footer {repoUrl} />
 </div>

@@ -1,12 +1,16 @@
 services:
   event-qa:
-    image: registry.gitlab.com/rse-switzerland/event-qa:latest
+    image: ${EVENT_QA_IMAGE:-ghcr.io/your-org/event-qa:latest}
     build: .
     restart: unless-stopped
     volumes:
       - ./data:/data
     environment:
+      # Local file (default) — edit ./data/event.yaml, no restart needed
+      # (re-read every EVENT_CONFIG_REFRESH, default 5m).
       EVENT_CONFIG: /data/event.yaml
+      # Or point at a URL instead of a bind-mounted file, e.g.:
+      # EVENT_CONFIG: https://github.com/<org>/<repo>/blob/main/event.yaml
       DB_PATH: /data/event-qa.db
       LOG_LEVEL: info
     ports:

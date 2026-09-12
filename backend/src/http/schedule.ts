@@ -13,6 +13,7 @@ eventRouter.get('/event', (req, res) => {
     end: event.end,
     info: event.info ?? null,
     timezone: event.timezone,
+    repo_url: event.repo_url ?? null,
     allow_non_admin_questions: getBoolSetting(db, 'allow_non_admin_questions'),
   });
 });

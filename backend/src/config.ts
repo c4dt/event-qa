@@ -73,6 +73,7 @@ const eventMetaSchema = z.object({
   end: dateOnly,
   info: z.string().optional(),
   timezone: z.string().default('UTC'),
+  repo_url: z.string().url().optional(),
 });
 
 const ratelimitSchema = z

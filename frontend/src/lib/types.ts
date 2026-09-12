@@ -24,6 +24,7 @@ export type EventMeta = {
   end: string;
   info: string | null;
   timezone: string;
+  repo_url: string | null;
   allow_non_admin_questions: boolean;
 };
 
